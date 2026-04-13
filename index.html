@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>wsqlite - SQLite ORM for Python</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.6; }
+        h1 { color: #333; border-bottom: 2px solid #4CAF50; padding-bottom: 10px; }
+        h2 { color: #555; }
+        code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; }
+        .feature { background: #f9f9f9; padding: 15px; margin: 10px 0; border-left: 4px solid #4CAF50; }
+        .badge { display: inline-block; padding: 5px 10px; background: #4CAF50; color: white; border-radius: 3px; margin: 5px; }
+        a { color: #4CAF50; }
+        .example { background: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 5px; overflow-x: auto; }
+        .example code { background: transparent; color: #d4d4d4; }
+    </style>
+</head>
+<body>
+    <h1>wsqlite - SQLite ORM for Python</h1>
+    
+    <p>Simple and type-safe SQLite ORM using Pydantic models.</p>
+    
+    <div class="badge">LTS v1.0.0</div>
+    <div class="badge">Python 3.9+</div>
+    <div class="badge">MIT License</div>
+    
+    <h2>Features</h2>
+    <div class="feature">Pydantic Integration - Define your database schema using Pydantic models</div>
+    <div class="feature">Auto Table Creation - Tables are created/synchronized automatically</div>
+    <div class="feature">CRUD Operations - Simple insert, get, update, delete methods</div>
+    <div class="feature">Column Sync - Automatically adds new columns when your model changes</div>
+    <div class="feature">Constraints - Support for Primary Key, UNIQUE, and NOT NULL</div>
+    <div class="feature">Async Support - Full async/await support for high-performance applications</div>
+    <div class="feature">Query Builder - Safe query construction with SQL injection prevention</div>
+    <div class="feature">CLI Tool - Command-line interface for common operations</div>
+    
+    <h2>Installation</h2>
+    <pre>pip install wsqlite</pre>
+    
+    <h2>Quick Start</h2>
+    <div class="example">
+    <pre><code>from pydantic import BaseModel
+from wsqlite import WSQLite
+
+class User(BaseModel):
+    id: int
+    name: str
+    email: str
+
+db = WSQLite(User, "database.db")
+db.insert(User(id=1, name="John", email="john@example.com"))
+users = db.get_all()</code></pre>
+    </div>
+    
+    <h2>Documentation</h2>
+    <ul>
+        <li><a href="docs/index.html">Full Documentation</a></li>
+        <li><a href="docs/getting_started/index.html">Getting Started</a></li>
+        <li><a href="docs/API.html">API Reference</a></li>
+    </ul>
+    
+    <h2>Examples</h2>
+    <ul>
+        <li><a href="examples/01_crud/example.py">CRUD Operations</a></li>
+        <li><a href="examples/04_pagination/example.py">Pagination</a></li>
+        <li><a href="examples/05_transactions/example.py">Transactions</a></li>
+        <li><a href="examples/06_bulk_operations/example.py">Bulk Operations</a></li>
+    </ul>
+    
+    <h2>Testing</h2>
+    <pre>pip install -e ".[dev]"
+pytest --cov=wsqlite</pre>
+    
+    <footer>
+        <p>&copy; 2024 William Steve Rodriguez Villamizar. MIT License.</p>
+    </footer>
+</body>
+</html>
