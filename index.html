@@ -3,77 +3,1326 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>wsqlite - SQLite ORM for Python</title>
+    <title>wsqlite 1.2.1-LTS - Production-Ready SQLite ORM</title>
+    <meta name="description" content="wsqlite 1.2.1-LTS is a production-grade SQLite ORM using Pydantic models with async support, connection pooling, and 79% test coverage.">
+    <meta name="keywords" content="python, sqlite, orm, pydantic, database, async, LTS, enterprise, type-safe">
+    <meta name="author" content="William Steve Rodriguez Villamizar">
+    <meta name="robots" content="index, follow">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="wsqlite - SQLite ORM Library">
+    <meta property="og:description" content="Production-ready SQLite ORM using Pydantic models with type-safe database operations, async support, and connection pooling.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://github.com/wisrovi/wsqlite">
+    <meta property="og:image" content="https://img.shields.io/github/stars/wisrovi/wsqlite?style=social">
+    <meta property="og:site_name" content="wsqlite">
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@wisrovi">
+    <meta name="twitter:title" content="wsqlite - SQLite ORM Library">
+    <meta name="twitter:description" content="Production-ready SQLite ORM using Pydantic models with type-safe database operations, async support, and connection pooling.">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' style='stop-color:%23f59e0b'/><stop offset='100%25' style='stop-color:%23ef4444'/></linearGradient></defs><rect width='100' height='100' rx='20' fill='url(%23g)'/><text x='50' y='68' text-anchor='middle' font-family='Arial' font-size='50' font-weight='bold' fill='white'>DB</text></svg>">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
     <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.6; }
-        h1 { color: #333; border-bottom: 2px solid #4CAF50; padding-bottom: 10px; }
-        h2 { color: #555; }
-        code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; }
-        .feature { background: #f9f9f9; padding: 15px; margin: 10px 0; border-left: 4px solid #4CAF50; }
-        .badge { display: inline-block; padding: 5px 10px; background: #4CAF50; color: white; border-radius: 3px; margin: 5px; }
-        a { color: #4CAF50; }
-        .example { background: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 5px; overflow-x: auto; }
-        .example code { background: transparent; color: #d4d4d4; }
+        :root {
+            --primary: #f59e0b;
+            --primary-dark: #d97706;
+            --primary-light: #fbbf24;
+            --secondary: #ef4444;
+            --accent: #10b981;
+            --success: #10b981;
+            --danger: #ef4444;
+            --bg-primary: #030712;
+            --bg-secondary: #0f172a;
+            --bg-tertiary: #1e293b;
+            --bg-card: #1e293b;
+            --bg-card-hover: #334155;
+            --text-primary: #f9fafb;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            --border: #374151;
+            --border-light: #4b5563;
+            
+            --gradient-primary: linear-gradient(135deg, #f59e0b 0%, #ef4444 50%, #dc2626 100%);
+            --gradient-hero: radial-gradient(ellipse at top, #451a03 0%, #030712 50%);
+            --gradient-glow: radial-gradient(circle at center, rgba(245, 158, 11, 0.15) 0%, transparent 70%);
+            --gradient-card: linear-gradient(180deg, rgba(245, 158, 11, 0.1) 0%, transparent 100%);
+            
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+            --shadow-glow: 0 0 40px rgba(245, 158, 11, 0.3);
+            
+            --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-normal: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow: 500ms cubic-bezier(0.4, 0, 0.2, 1);
+            
+            --section-padding: clamp(4rem, 10vw, 8rem);
+            --container-max: 1280px;
+        }
+
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html { scroll-behavior: smooth; scroll-padding-top: 80px; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.7;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .container { max-width: var(--container-max); margin: 0 auto; padding: 0 clamp(1rem, 5vw, 2rem); }
+
+        .gradient-text {
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: rgba(3, 7, 18, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(55, 65, 81, 0.5);
+            transition: all var(--transition-normal);
+        }
+
+        .nav.scrolled { background: rgba(3, 7, 18, 0.95); box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3); }
+
+        .nav-container {
+            max-width: var(--container-max);
+            margin: 0 auto;
+            padding: 0 clamp(1rem, 5vw, 2rem);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 72px;
+        }
+
+        .nav-logo { display: flex; align-items: center; gap: 0.75rem; text-decoration: none; color: var(--text-primary); font-weight: 700; font-size: 1.5rem; }
+
+        .nav-logo-icon {
+            width: 40px; height: 40px;
+            background: var(--gradient-primary);
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+        }
+
+        .nav-logo-icon svg { width: 24px; height: 24px; color: white; }
+
+        .nav-links { display: flex; gap: 2.5rem; align-items: center; }
+
+        .nav-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.9375rem;
+            transition: color var(--transition-fast);
+            position: relative;
+        }
+
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--gradient-primary);
+            transition: width var(--transition-normal);
+        }
+
+        .nav-link:hover { color: var(--text-primary); }
+        .nav-link:hover::after { width: 100%; }
+
+        .nav-cta {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.625rem 1.25rem;
+            background: var(--gradient-primary);
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9375rem;
+            border-radius: 8px;
+            transition: all var(--transition-normal);
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+        }
+
+        .nav-cta:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4); }
+        .nav-cta svg { width: 18px; height: 18px; }
+
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 8rem clamp(1rem, 5vw, 2rem) 4rem;
+            background: var(--gradient-hero);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: var(--gradient-glow); pointer-events: none; }
+
+        .hero-grid {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: linear-gradient(rgba(245, 158, 11, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(245, 158, 11, 0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+        }
+
+        .hero-content { position: relative; z-index: 1; max-width: 900px; }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            padding: 0.5rem 1rem;
+            border-radius: 100px;
+            font-size: 0.875rem;
+            color: var(--primary-light);
+            margin-bottom: 2rem;
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        .hero-badge svg { width: 16px; height: 16px; }
+
+        .hero-title {
+            font-size: clamp(2.5rem, 8vw, 4.5rem);
+            font-weight: 900;
+            letter-spacing: -0.02em;
+            margin-bottom: 1.5rem;
+            line-height: 1.1;
+            animation: fadeInUp 0.6s ease-out 0.1s both;
+        }
+
+        .hero-subtitle {
+            font-size: clamp(1.125rem, 3vw, 1.375rem);
+            color: var(--text-secondary);
+            max-width: 700px;
+            margin: 0 auto 2.5rem;
+            line-height: 1.8;
+            animation: fadeInUp 0.6s ease-out 0.2s both;
+        }
+
+        .hero-actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-bottom: 3rem; animation: fadeInUp 0.6s ease-out 0.3s both; }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.625rem;
+            padding: 0.875rem 1.75rem;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 1rem;
+            text-decoration: none;
+            transition: all var(--transition-normal);
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary { background: var(--gradient-primary); color: white; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4); }
+        .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(245, 158, 11, 0.5); }
+
+        .btn-secondary { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); }
+        .btn-secondary:hover { background: var(--bg-card-hover); border-color: var(--border-light); transform: translateY(-2px); }
+
+        .btn svg { width: 20px; height: 20px; }
+
+        .hero-badges { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-bottom: 3rem; animation: fadeInUp 0.6s ease-out 0.4s both; }
+
+        .hero-badge-item { display: flex; align-items: center; background: rgba(30, 41, 59, 0.8); padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--border); }
+
+        .hero-code-container { animation: fadeInUp 0.6s ease-out 0.5s both; }
+
+        .hero-code {
+            background: rgba(13, 17, 23, 0.9);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9375rem;
+            color: #e6edf3;
+            text-align: left;
+            max-width: 650px;
+            margin: 0 auto;
+            backdrop-filter: blur(10px);
+            box-shadow: var(--shadow-xl), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+
+        .hero-code .comment { color: #8b949e; }
+        .hero-code .keyword { color: #ff7b72; }
+        .hero-code .function { color: #d2a8ff; }
+        .hero-code .string { color: #a5d6ff; }
+        .hero-code .variable { color: #79c0ff; }
+        .hero-code .number { color: #79c0ff; }
+        .hero-code .method { color: #d2a8ff; }
+        .hero-code .class { color: #ffa657; }
+
+        .scroll-indicator { position: absolute; bottom: 2rem; left: 50%; transform: translateX(-50%); animation: bounce 2s infinite; }
+        .scroll-indicator svg { width: 32px; height: 32px; color: var(--text-muted); }
+
+        @keyframes bounce { 0%, 20%, 50%, 80%, 100% { transform: translateX(-50%) translateY(0); } 40% { transform: translateX(-50%) translateY(-10px); } 60% { transform: translateX(-50%) translateY(-5px); } }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+        .section { padding: var(--section-padding) 0; }
+
+        .section-header { text-align: center; margin-bottom: 4rem; }
+
+        .section-label {
+            display: inline-block;
+            color: var(--primary);
+            font-weight: 600;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            margin-bottom: 1rem;
+            padding: 0.5rem 1rem;
+            background: rgba(245, 158, 11, 0.1);
+            border-radius: 100px;
+            border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+
+        .section-title { font-size: clamp(2rem, 5vw, 3rem); font-weight: 800; margin-bottom: 1rem; letter-spacing: -0.02em; }
+        .section-description { color: var(--text-secondary); font-size: 1.125rem; max-width: 650px; margin: 0 auto; line-height: 1.8; }
+
+        .what-section { background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%); }
+        .what-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; }
+
+        .what-content h3 { font-size: 1.75rem; margin-bottom: 1.5rem; font-weight: 700; }
+        .what-content p { color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 1.0625rem; line-height: 1.8; }
+
+        .what-features { list-style: none; }
+        .what-features li { display: flex; align-items: flex-start; gap: 1rem; margin-bottom: 1.25rem; color: var(--text-secondary); font-size: 1rem; }
+        .what-features svg { width: 24px; height: 24px; color: var(--success); flex-shrink: 0; margin-top: 0.125rem; }
+
+        .what-visual { background: var(--bg-tertiary); border-radius: 20px; padding: 2rem; border: 1px solid var(--border); box-shadow: var(--shadow-xl); }
+
+        .schema-flow { display: flex; flex-direction: column; gap: 0.5rem; }
+
+        .schema-step {
+            display: flex; align-items: center; gap: 1.25rem;
+            padding: 1.25rem 1.5rem;
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            transition: all var(--transition-normal);
+        }
+
+        .schema-step:hover { border-color: var(--primary); transform: translateX(12px); box-shadow: 0 0 30px rgba(245, 158, 11, 0.15); }
+
+        .schema-step-icon {
+            width: 48px; height: 48px;
+            background: var(--gradient-primary);
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.25rem; font-weight: 700; color: white;
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+        }
+
+        .schema-step-content h4 { font-size: 1rem; margin-bottom: 0.25rem; font-weight: 600; }
+        .schema-step-content p { font-size: 0.875rem; color: var(--text-muted); margin: 0; }
+
+        .schema-arrow { display: flex; justify-content: center; padding: 0.5rem 0; color: var(--text-muted); }
+        .schema-arrow svg { width: 24px; height: 24px; }
+
+        .problems-section { background: var(--bg-secondary); }
+
+        .problems-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
+
+        .problem-card {
+            background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 16px; padding: 2rem;
+            transition: all var(--transition-normal); position: relative; overflow: hidden;
+        }
+
+        .problem-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--gradient-primary); opacity: 0; transition: opacity var(--transition-normal); }
+        .problem-card:hover { border-color: var(--primary); transform: translateY(-4px); box-shadow: var(--shadow-xl); }
+        .problem-card:hover::before { opacity: 1; }
+
+        .problem-icon { width: 56px; height: 56px; background: rgba(239, 68, 68, 0.1); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.75rem; margin-bottom: 1.5rem; }
+        .problem-card h3 { font-size: 1.125rem; margin-bottom: 0.75rem; font-weight: 600; }
+        .problem-card p { color: var(--text-secondary); font-size: 0.9375rem; line-height: 1.7; }
+
+        .features-section { background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%); }
+
+        .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1.5rem; }
+
+        .feature-card {
+            background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 16px; padding: 2rem;
+            transition: all var(--transition-normal); position: relative; overflow: hidden;
+        }
+
+        .feature-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--gradient-primary); opacity: 0; transition: opacity var(--transition-normal); }
+        .feature-card:hover { border-color: var(--primary); transform: translateY(-4px); box-shadow: var(--shadow-xl); }
+        .feature-card:hover::before { opacity: 1; }
+
+        .feature-icon { width: 64px; height: 64px; background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(239, 68, 68, 0.1) 100%); border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 2rem; margin-bottom: 1.5rem; }
+        .feature-card h3 { font-size: 1.25rem; margin-bottom: 0.75rem; font-weight: 600; }
+        .feature-card p { color: var(--text-secondary); font-size: 0.9375rem; margin-bottom: 1.25rem; line-height: 1.7; }
+
+        .feature-link { display: inline-flex; align-items: center; gap: 0.5rem; color: var(--primary-light); font-size: 0.875rem; font-weight: 500; text-decoration: none; transition: all var(--transition-fast); }
+        .feature-link:hover { color: var(--primary); gap: 0.75rem; }
+        .feature-link svg { width: 16px; height: 16px; transition: transform var(--transition-fast); }
+        .feature-link:hover svg { transform: translateX(4px); }
+
+        .install-section { background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%); }
+        .install-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 2rem; }
+
+        .install-card { background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; transition: all var(--transition-normal); }
+        .install-card:hover { border-color: var(--primary); transform: translateY(-4px); box-shadow: var(--shadow-xl); }
+
+        .install-header { background: var(--bg-secondary); padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 0.75rem; }
+        .install-header svg { width: 24px; height: 24px; color: var(--primary-light); }
+        .install-header h3 { font-size: 1rem; font-weight: 600; }
+        .install-body { padding: 1.5rem; }
+
+        .install-code { background: rgba(13, 17, 23, 0.8); border-radius: 10px; padding: 1.25rem; font-family: 'JetBrains Mono', monospace; font-size: 0.875rem; color: #c9d1d9; overflow-x: auto; border: 1px solid var(--border); }
+        .install-code .comment { color: #8b949e; }
+
+        .stats-section { background: var(--bg-secondary); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 2rem; text-align: center; }
+
+        .stat-item { padding: 2rem; }
+        .stat-value { font-size: 3.5rem; font-weight: 800; background: var(--gradient-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 0.5rem; line-height: 1; }
+        .stat-label { color: var(--text-secondary); font-size: 1rem; font-weight: 500; }
+
+        .author-section { background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%); }
+
+        .author-card {
+            max-width: 900px; margin: 0 auto;
+            background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 24px; padding: 3rem;
+            display: grid; grid-template-columns: auto 1fr; gap: 3rem; align-items: center; box-shadow: var(--shadow-xl);
+        }
+
+        .author-avatar { width: 160px; height: 160px; border-radius: 50%; background: var(--gradient-primary); display: flex; align-items: center; justify-content: center; font-size: 4rem; font-weight: 700; color: white; box-shadow: 0 0 40px rgba(245, 158, 11, 0.4); }
+        .author-info h3 { font-size: 1.75rem; margin-bottom: 0.5rem; font-weight: 700; }
+        .author-title { color: var(--primary-light); font-weight: 600; margin-bottom: 0.25rem; }
+        .author-company { color: var(--text-secondary); margin-bottom: 1rem; }
+        .author-bio { color: var(--text-secondary); font-size: 1rem; margin-bottom: 1.5rem; line-height: 1.7; }
+
+        .author-links { display: flex; gap: 1rem; flex-wrap: wrap; }
+
+        .author-link {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            padding: 0.75rem 1.25rem;
+            background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px;
+            color: var(--text-primary); text-decoration: none; font-size: 0.875rem; font-weight: 500;
+            transition: all var(--transition-fast);
+        }
+
+        .author-link:hover { border-color: var(--primary); background: var(--bg-card-hover); transform: translateY(-2px); }
+        .author-link svg { width: 18px; height: 18px; }
+
+        .cta-section { text-align: center; padding: var(--section-padding) 0; background: var(--bg-primary); position: relative; overflow: hidden; }
+        .cta-section::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: var(--gradient-glow); pointer-events: none; }
+        .cta-content { position: relative; z-index: 1; }
+        .cta-section h2 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 800; margin-bottom: 1rem; }
+        .cta-section > .container > .cta-content > p { color: var(--text-secondary); font-size: 1.125rem; margin-bottom: 2.5rem; max-width: 600px; margin-left: auto; margin-right: auto; }
+
+        footer { background: var(--bg-secondary); border-top: 1px solid var(--border); padding: 3rem 0; }
+
+        .footer-content { max-width: var(--container-max); margin: 0 auto; padding: 0 clamp(1rem, 5vw, 2rem); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem; }
+
+        .footer-brand { display: flex; align-items: center; gap: 0.75rem; text-decoration: none; color: var(--text-primary); font-weight: 600; font-size: 1.125rem; }
+        .footer-brand-icon { width: 32px; height: 32px; background: var(--gradient-primary); border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+        .footer-brand-icon svg { width: 20px; height: 20px; color: white; }
+
+        .footer-links { display: flex; gap: 2rem; flex-wrap: wrap; }
+        .footer-link { color: var(--text-secondary); text-decoration: none; font-size: 0.875rem; transition: color var(--transition-fast); }
+        .footer-link:hover { color: var(--text-primary); }
+        .footer-copyright { color: var(--text-muted); font-size: 0.875rem; }
+
+        .mobile-menu-btn { display: none; background: none; border: none; color: var(--text-primary); cursor: pointer; padding: 0.5rem; }
+        .mobile-menu-btn svg { width: 28px; height: 28px; }
+
+        @media (max-width: 1024px) {
+            .what-grid { grid-template-columns: 1fr; gap: 3rem; }
+            .author-card { grid-template-columns: 1fr; text-align: center; }
+            .author-avatar { margin: 0 auto; }
+            .author-links { justify-content: center; }
+        }
+
+        @media (max-width: 768px) {
+            .nav-links { display: none; }
+            .mobile-menu-btn { display: block; }
+            .hero { padding-top: 6rem; }
+            .hero-actions { flex-direction: column; align-items: center; }
+            .btn { width: 100%; max-width: 300px; justify-content: center; }
+            .features-grid { grid-template-columns: 1fr; }
+            .footer-content { flex-direction: column; text-align: center; }
+            .footer-links { justify-content: center; }
+            .install-grid { grid-template-columns: 1fr; }
+        }
+
+        .animate-on-scroll { opacity: 0; transform: translateY(30px); transition: opacity 0.6s ease-out, transform 0.6s ease-out; }
+        .animate-on-scroll.visible { opacity: 1; transform: translateY(0); }
+
+        .particles { position: absolute; top: 0; left: 0; right: 0; bottom: 0; overflow: hidden; pointer-events: none; }
+        .particle { position: absolute; width: 4px; height: 4px; background: var(--primary); border-radius: 50%; opacity: 0.3; animation: float 15s infinite; }
+
+        @keyframes float { 0%, 100% { transform: translateY(0) translateX(0); opacity: 0; } 10% { opacity: 0.3; } 90% { opacity: 0.3; } 100% { transform: translateY(-100vh) translateX(50px); opacity: 0; } }
+
+        .api-section { background: var(--bg-secondary); }
+        .api-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; }
+
+        .api-card { background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; }
+        .api-card h3 { color: var(--primary-light); font-size: 1.125rem; margin-bottom: 1rem; font-family: 'JetBrains Mono', monospace; }
+
+        .api-code { background: rgba(13, 17, 23, 0.8); border-radius: 10px; padding: 1.25rem; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #c9d1d9; overflow-x: auto; line-height: 1.8; }
     </style>
 </head>
 <body>
-    <h1>wsqlite - SQLite ORM for Python</h1>
-    
-    <p>Simple and type-safe SQLite ORM using Pydantic models.</p>
-    
-    <div class="badge">LTS v1.0.0</div>
-    <div class="badge">Python 3.9+</div>
-    <div class="badge">MIT License</div>
-    
-    <h2>Features</h2>
-    <div class="feature">Pydantic Integration - Define your database schema using Pydantic models</div>
-    <div class="feature">Auto Table Creation - Tables are created/synchronized automatically</div>
-    <div class="feature">CRUD Operations - Simple insert, get, update, delete methods</div>
-    <div class="feature">Column Sync - Automatically adds new columns when your model changes</div>
-    <div class="feature">Constraints - Support for Primary Key, UNIQUE, and NOT NULL</div>
-    <div class="feature">Async Support - Full async/await support for high-performance applications</div>
-    <div class="feature">Query Builder - Safe query construction with SQL injection prevention</div>
-    <div class="feature">CLI Tool - Command-line interface for common operations</div>
-    
-    <h2>Installation</h2>
-    <pre>pip install wsqlite</pre>
-    
-    <h2>Quick Start</h2>
-    <div class="example">
-    <pre><code>from pydantic import BaseModel
-from wsqlite import WSQLite
+    <!-- Navigation -->
+    <nav class="nav" id="nav">
+        <div class="nav-container">
+            <a href="#" class="nav-logo">
+                <div class="nav-logo-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                        <path d="M3 5v14a9 3 0 0 0 18 0V5"/>
+                        <path d="M3 12a9 3 0 0 0 18 0"/>
+                    </svg>
+                </div>
+                wsqlite
+            </a>
+            <div class="nav-links">
+                <a href="#what-is" class="nav-link">What is wsqlite?</a>
+                <a href="#features" class="nav-link">Features</a>
+                <a href="#api" class="nav-link">API</a>
+                <a href="#installation" class="nav-link">Installation</a>
+                <a href="https://wsqlite.readthedocs.io/" class="nav-cta" target="_blank">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                    </svg>
+                    Documentation
+                </a>
+            </div>
+            <button class="mobile-menu-btn" aria-label="Menu">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                </svg>
+            </button>
+        </div>
+    </nav>
 
-class User(BaseModel):
-    id: int
-    name: str
-    email: str
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-grid"></div>
+        <div class="particles">
+            <div class="particle" style="left: 10%; animation-delay: 0s;"></div>
+            <div class="particle" style="left: 20%; animation-delay: 2s;"></div>
+            <div class="particle" style="left: 30%; animation-delay: 4s;"></div>
+            <div class="particle" style="left: 40%; animation-delay: 1s;"></div>
+            <div class="particle" style="left: 50%; animation-delay: 3s;"></div>
+            <div class="particle" style="left: 60%; animation-delay: 5s;"></div>
+            <div class="particle" style="left: 70%; animation-delay: 2.5s;"></div>
+            <div class="particle" style="left: 80%; animation-delay: 4.5s;"></div>
+            <div class="particle" style="left: 90%; animation-delay: 1.5s;"></div>
+        </div>
+        
+        <div class="hero-content">
+            <div class="hero-badge">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                v1.2.1-LTS — Production-Ready with 317 Tests & 79% Coverage
+            </div>
+            
+            <h1 class="hero-title">
+                <span class="gradient-text">SQLite ORM</span><br>
+                Using Pydantic Models
+            </h1>
+            
+            <p class="hero-subtitle">
+                <strong>wsqlite</strong> is a production-grade SQLite ORM that uses Pydantic models 
+                for type-safe database operations. Full async/await support, connection pooling, 
+                and automatic schema synchronization.
+            </p>
 
-db = WSQLite(User, "database.db")
-db.insert(User(id=1, name="John", email="john@example.com"))
-users = db.get_all()</code></pre>
-    </div>
-    
-    <h2>Documentation</h2>
-    <ul>
-        <li><a href="docs/index.html">Full Documentation</a></li>
-        <li><a href="docs/getting_started/index.html">Getting Started</a></li>
-        <li><a href="docs/API.html">API Reference</a></li>
-    </ul>
-    
-    <h2>Examples</h2>
-    <ul>
-        <li><a href="examples/01_crud/example.py">CRUD Operations</a></li>
-        <li><a href="examples/04_pagination/example.py">Pagination</a></li>
-        <li><a href="examples/05_transactions/example.py">Transactions</a></li>
-        <li><a href="examples/06_bulk_operations/example.py">Bulk Operations</a></li>
-    </ul>
-    
-    <h2>Testing</h2>
-    <pre>pip install -e ".[dev]"
-pytest --cov=wsqlite</pre>
-    
+            <div class="hero-actions">
+                <a href="https://github.com/wisrovi/wsqlite" class="btn btn-primary" target="_blank">
+                    <svg fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+                    </svg>
+                    View on GitHub
+                </a>
+                <a href="https://wsqlite.readthedocs.io/" class="btn btn-secondary" target="_blank">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                    </svg>
+                    Read the Docs
+                </a>
+            </div>
+
+            <div class="hero-badges">
+                <div class="hero-badge-item">
+                    <img src="https://img.shields.io/pypi/v/wsqlite.svg?style=flat-square" alt="PyPI Version">
+                </div>
+                <div class="hero-badge-item">
+                    <img src="https://img.shields.io/pypi/pyversions/wsqlite.svg?style=flat-square" alt="Python Versions">
+                </div>
+                <div class="hero-badge-item">
+                    <img src="https://img.shields.io/github/license/wisrovi/wsqlite.svg?style=flat-square" alt="License">
+                </div>
+                <div class="hero-badge-item">
+                    <img src="https://img.shields.io/badge/tests-317%20passing-10b981?style=flat-square" alt="Tests">
+                </div>
+                <div class="hero-badge-item">
+                    <img src="https://img.shields.io/badge/coverage-79%25-yellow?style=flat-square" alt="Coverage">
+                </div>
+            </div>
+
+            <div class="hero-code-container">
+                <div class="hero-code">
+                    <span class="comment"># Install in seconds</span><br>
+                    <span class="variable">pip install</span> wsqlite<br><br>
+                    <span class="comment"># Define your model with Pydantic</span><br>
+                    <span class="keyword">from</span> pydantic <span class="keyword">import</span> <span class="class">BaseModel</span><br>
+                    <span class="keyword">from</span> wsqlite <span class="keyword">import</span> <span class="function">WSQLite</span><br><br>
+                    <span class="keyword">class</span> <span class="class">User</span>(<span class="class">BaseModel</span>):<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;id: <span class="keyword">int</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;name: <span class="keyword">str</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;email: <span class="keyword">str</span><br><br>
+                    db = <span class="function">WSQLite</span>(User, <span class="string">"users.db"</span>)<br>
+                    db.<span class="method">insert</span>(User(id=<span class="number">1</span>, name=<span class="string">"Alice"</span>, email=<span class="string">"alice@example.com"</span>))<br>
+                    users = db.<span class="method">get_all</span>()
+                </div>
+            </div>
+        </div>
+
+        <div class="scroll-indicator">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+            </svg>
+        </div>
+    </section>
+
+    <!-- What is Section -->
+    <section id="what-is" class="section what-section">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-label">Introduction</span>
+                <h2 class="section-title">What is <span class="gradient-text">wsqlite</span>?</h2>
+                <p class="section-description">
+                    A production-grade SQLite ORM library engineered for modern Python applications. 
+                    Built atop Pydantic's type validation system for type-safe database operations.
+                </p>
+            </div>
+
+            <div class="what-grid">
+                <div class="what-content">
+                    <h3>Type-Safe Database <span class="gradient-text">Operations</span></h3>
+                    <p>
+                        wsqlite leverages Pydantic models to define database schemas with full type safety. 
+                        No SQL strings, no manual type conversions — just pure Python with automatic validation.
+                    </p>
+                    <p>
+                        Perfect for data-intensive applications, microservices, and anywhere SQLite is the right tool for the job.
+                    </p>
+                    <ul class="what-features">
+                        <li>
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            <span><strong>Type-Safe</strong> — Pydantic validation for all database operations</span>
+                        </li>
+                        <li>
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            <span><strong>Async Support</strong> — Full async/await API for high-throughput scenarios</span>
+                        </li>
+                        <li>
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            <span><strong>Connection Pooling</strong> — Built-in connection pool for performance</span>
+                        </li>
+                        <li>
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            <span><strong>Auto Schema Sync</strong> — Models automatically sync with database</span>
+                        </li>
+                        <li>
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            <span><strong>Production-Ready</strong> — 317 tests, 79% coverage, LTS release</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="what-visual">
+                    <div class="schema-flow">
+                        <div class="schema-step">
+                            <div class="schema-step-icon">1</div>
+                            <div class="schema-step-content">
+                                <h4>Pydantic Model</h4>
+                                <p>Define schema with type hints</p>
+                            </div>
+                        </div>
+                        <div class="schema-arrow">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+                            </svg>
+                        </div>
+                        <div class="schema-step">
+                            <div class="schema-step-icon">2</div>
+                            <div class="schema-step-content">
+                                <h4>Auto Validation</h4>
+                                <p>Pydantic validates all data</p>
+                            </div>
+                        </div>
+                        <div class="schema-arrow">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+                            </svg>
+                        </div>
+                        <div class="schema-step">
+                            <div class="schema-step-icon">3</div>
+                            <div class="schema-step-content">
+                                <h4>SQLite Storage</h4>
+                                <p>Automatic table creation & sync</p>
+                            </div>
+                        </div>
+                        <div class="schema-arrow">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+                            </svg>
+                        </div>
+                        <div class="schema-step">
+                            <div class="schema-step-icon">4</div>
+                            <div class="schema-step-content">
+                                <h4>Type-Safe Results</h4>
+                                <p>Get back Pydantic models</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Problems Section -->
+    <section class="section problems-section">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-label">Why wsqlite?</span>
+                <h2 class="section-title">Problems <span class="gradient-text">wsqlite Solves</span></h2>
+                <p class="section-description">
+                    Raw SQLite and SQLAlchemy can be complex. wsqlite keeps it simple with Pydantic-powered type safety.
+                </p>
+            </div>
+
+            <div class="problems-grid">
+                <div class="problem-card">
+                    <div class="problem-icon">🐌</div>
+                    <h3>Verbose SQL Queries</h3>
+                    <p>Writing raw SQL strings is error-prone and hard to maintain. wsqlite uses Pydantic models instead.</p>
+                </div>
+                <div class="problem-card">
+                    <div class="problem-icon">🔓</div>
+                    <h3>Type Safety Issues</h3>
+                    <p>No compile-time checks for database operations. wsqlite validates everything with Pydantic.</p>
+                </div>
+                <div class="problem-card">
+                    <div class="problem-icon">🔧</div>
+                    <h3>Schema Management</h3>
+                    <p>Manual table creation and migrations. wsqlite auto-syncs models to database schema.</p>
+                </div>
+                <div class="problem-card">
+                    <div class="problem-icon">⚡</div>
+                    <h3>Performance</h3>
+                    <p>Connection overhead in async applications. wsqlite provides connection pooling out of the box.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="section features-section">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-label">Capabilities</span>
+                <h2 class="section-title">Powerful <span class="gradient-text">Features</span></h2>
+                <p class="section-description">
+                    Everything you need for production-ready SQLite operations with clean Python code.
+                </p>
+            </div>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">📝</div>
+                    <h3>Pydantic Models</h3>
+                    <p>Define database schemas using familiar Pydantic BaseModel. Full type validation and serialization.</p>
+                    <a href="https://wsqlite.readthedocs.io/" class="feature-link" target="_blank">
+                        View documentation
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                        </svg>
+                    </a>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3>Full Async Support</h3>
+                    <p>Complete async/await API for high-throughput scenarios. Async connection pool included.</p>
+                    <a href="https://wsqlite.readthedocs.io/" class="feature-link" target="_blank">
+                        Async examples
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                        </svg>
+                    </a>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🔄</div>
+                    <h3>Connection Pooling</h3>
+                    <p>Built-in connection pool with configurable size. AsyncConnectionPool for async workloads.</p>
+                    <a href="https://wsqlite.readthedocs.io/" class="feature-link" target="_blank">
+                        View pool docs
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                        </svg>
+                    </a>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🔗</div>
+                    <h3>Auto Schema Sync</h3>
+                    <p>Models automatically sync with database structure. No manual migrations needed.</p>
+                    <a href="https://wsqlite.readthedocs.io/" class="feature-link" target="_blank">
+                        Schema sync docs
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                        </svg>
+                    </a>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">💾</div>
+                    <h3>Transaction Support</h3>
+                    <p>ACID-compliant transaction handling with context managers. Automatic rollback on errors.</p>
+                    <a href="https://wsqlite.readthedocs.io/" class="feature-link" target="_blank">
+                        Transaction examples
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                        </svg>
+                    </a>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🔒</div>
+                    <h3>SQL Injection Protection</h3>
+                    <p>Query builder with parameterized queries. All inputs are properly escaped.</p>
+                    <a href="https://wsqlite.readthedocs.io/" class="feature-link" target="_blank">
+                        Query builder docs
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                        </svg>
+                    </a>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">⚠️</div>
+                    <h3>Exception Hierarchy</h3>
+                    <p>12 custom exception types for precise error handling. WSQLiteError, ValidationError, and more.</p>
+                    <a href="https://wsqlite.readthedocs.io/" class="feature-link" target="_blank">
+                        Exception docs
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                        </svg>
+                    </a>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3>Query Builder</h3>
+                    <p>Fluent SQL construction with JOINs, GROUP BY, HAVING, UNION support.</p>
+                    <a href="https://wsqlite.readthedocs.io/" class="feature-link" target="_blank">
+                        Query builder examples
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                        </svg>
+                    </a>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🧪</div>
+                    <h3>Type Validators</h3>
+                    <p>Comprehensive type validation and serialization. Custom validators supported.</p>
+                    <a href="https://wsqlite.readthedocs.io/" class="feature-link" target="_blank">
+                        Validator docs
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                        </svg>
+                    </a>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🚀</div>
+                    <h3>Benchmark Suite</h3>
+                    <p>Built-in benchmarks comparing vs sqlite3, sqlalchemy, and aiosqlite.</p>
+                    <a href="https://github.com/wisrovi/wsqlite/tree/main/benchmark" class="feature-link" target="_blank">
+                        View benchmarks
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                        </svg>
+                    </a>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🛠️</div>
+                    <h3>CLI Interface</h3>
+                    <p>Integrated command-line utilities for common database operations.</p>
+                    <a href="https://wsqlite.readthedocs.io/" class="feature-link" target="_blank">
+                        CLI docs
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                        </svg>
+                    </a>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">✅</div>
+                    <h3>Well Tested</h3>
+                    <p>317 tests with 79% code coverage. Stress testing suite included.</p>
+                    <a href="https://github.com/wisrovi/wsqlite/tree/main/test" class="feature-link" target="_blank">
+                        View test suite
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- API Reference Section -->
+    <section id="api" class="section api-section">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-label">API Reference</span>
+                <h2 class="section-title">Core <span class="gradient-text">Classes & Functions</span></h2>
+                <p class="section-description">
+                    Complete API reference with all available classes, methods, and utilities.
+                </p>
+            </div>
+
+            <div class="api-grid">
+                <div class="api-card">
+                    <h3>from wsqlite import WSQLite</h3>
+                    <div class="api-code">
+<span class="keyword">class</span> <span class="function">WSQLite</span>(Model: <span class="class">Type</span>[<span class="class">BaseModel</span>], db_path: <span class="keyword">str</span>, ...):<br>
+&nbsp;&nbsp;<span class="comment"># Core Methods</span><br>
+&nbsp;&nbsp;<span class="keyword">def</span> <span class="method">insert</span>(self, record: Model) -> Model<br>
+&nbsp;&nbsp;<span class="keyword">def</span> <span class="method">get_by_id</span>(self, id: <span class="keyword">int</span>) -> <span class="keyword">Optional</span>[Model]<br>
+&nbsp;&nbsp;<span class="keyword">def</span> <span class="method">get_all</span>(self) -> <span class="keyword">list</span>[Model]<br>
+&nbsp;&nbsp;<span class="keyword">def</span> <span class="method">update</span>(self, id: <span class="keyword">int</span>, data: <span class="keyword">dict</span>) -> <span class="keyword">Optional</span>[Model]<br>
+&nbsp;&nbsp;<span class="keyword">def</span> <span class="method">delete</span>(self, id: <span class="keyword">int</span>) -> <span class="keyword">bool</span><br>
+&nbsp;&nbsp;<span class="keyword">def</span> <span class="method">count</span>(self) -> <span class="keyword">int</span><br>
+&nbsp;&nbsp;<br>
+&nbsp;&nbsp;<span class="comment"># Async Methods</span><br>
+&nbsp;&nbsp;<span class="keyword">async def</span> <span class="method">insert_async</span>(self, record: Model)<br>
+&nbsp;&nbsp;<span class="keyword">async def</span> <span class="method">get_all_async</span>(self) -> <span class="keyword">list</span>[Model]<br>
+&nbsp;&nbsp;<br>
+&nbsp;&nbsp;<span class="comment"># Query Methods</span><br>
+&nbsp;&nbsp;<span class="keyword">def</span> <span class="method">filter</span>(self, **kwargs) -> <span class="keyword">list</span>[Model]<br>
+&nbsp;&nbsp;<span class="keyword">def</span> <span class="method">paginate</span>(self, page: <span class="keyword">int</span>, per_page: <span class="keyword">int</span>)
+                    </div>
+                </div>
+
+                <div class="api-card">
+                    <h3>from wsqlite import ConnectionPool</h3>
+                    <div class="api-code">
+<span class="keyword">class</span> <span class="function">ConnectionPool</span>:<br>
+&nbsp;&nbsp;<span class="keyword">def</span> <span class="method">__init__</span>(<br>
+&nbsp;&nbsp;&nbsp;&nbsp;db_path: <span class="keyword">str</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;pool_size: <span class="keyword">int</span> = <span class="number">5</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;timeout: <span class="keyword">float</span> = <span class="number">30.0</span><br>
+&nbsp;&nbsp;):<br>
+&nbsp;&nbsp;<br>
+&nbsp;&nbsp;<span class="keyword">def</span> <span class="method">get_connection</span>(self) -> <span class="keyword">Connection</span><br>
+&nbsp;&nbsp;<span class="keyword">def</span> <span class="method">return_connection</span>(self, conn)<br>
+&nbsp;&nbsp;<span class="keyword">def</span> <span class="method">close</span>(self)<br>
+<br>
+<span class="keyword">class</span> <span class="function">AsyncConnectionPool</span>:<br>
+&nbsp;&nbsp;<span class="comment"># Same interface, async versions</span>
+                    </div>
+                </div>
+
+                <div class="api-card">
+                    <h3>from wsqlite import Transaction</h3>
+                    <div class="api-code">
+<span class="keyword">class</span> <span class="function">Transaction</span>:<br>
+&nbsp;&nbsp;<span class="comment"># Context manager for transactions</span><br>
+&nbsp;&nbsp;<span class="keyword">def</span> <span class="method">__init__</span>(db_path: <span class="keyword">str</span>):<br>
+&nbsp;&nbsp;<br>
+&nbsp;&nbsp;<span class="comment"># Usage:</span><br>
+<span class="keyword">with</span> <span class="function">Transaction</span>(db_path) <span class="keyword">as</span> tx:<br>
+&nbsp;&nbsp;tx.execute(sql, params)<br>
+&nbsp;&nbsp;tx.commit() <span class="comment"># or auto-commit on exit</span><br>
+<br>
+<span class="keyword">class</span> <span class="function">AsyncTransaction</span>:<br>
+&nbsp;&nbsp;<span class="comment"># Async version with same interface</span>
+                    </div>
+                </div>
+
+                <div class="api-card">
+                    <h3>from wsqlite import QueryBuilder</h3>
+                    <div class="api-code">
+<span class="keyword">class</span> <span class="function">QueryBuilder</span>:<br>
+&nbsp;&nbsp;<span class="keyword">def</span> <span class="method">select</span>(self, *columns) -> <span class="keyword">self</span><br>
+&nbsp;&nbsp;<span class="keyword">def</span> <span class="method">where</span>(self, condition: <span class="keyword">str</span>, *params) -> <span class="keyword">self</span><br>
+&nbsp;&nbsp;<span class="keyword">def</span> <span class="method">join</span>(self, table, on, how) -> <span class="keyword">self</span><br>
+&nbsp;&nbsp;<span class="keyword">def</span> <span class="method">group_by</span>(self, *columns) -> <span class="keyword">self</span><br>
+&nbsp;&nbsp;<span class="keyword">def</span> <span class="method">having</span>(self, condition) -> <span class="keyword">self</span><br>
+&nbsp;&nbsp;<span class="keyword">def</span> <span class="method">order_by</span>(self, *columns) -> <span class="keyword">self</span><br>
+&nbsp;&nbsp;<span class="keyword">def</span> <span class="method">limit</span>(self, n: <span class="keyword">int</span>) -> <span class="keyword">self</span><br>
+&nbsp;&nbsp;<span class="keyword">def</span> <span class="method">execute</span>(self) -> <span class="keyword">list</span>
+                    </div>
+                </div>
+
+                <div class="api-card">
+                    <h3>from wsqlite import TableSync</h3>
+                    <div class="api-code">
+<span class="keyword">class</span> <span class="function">TableSync</span>:<br>
+&nbsp;&nbsp;<span class="keyword">def</span> <span class="method">__init__</span>(db_path: <span class="keyword">str</span>):<br>
+&nbsp;&nbsp;<br>
+&nbsp;&nbsp;<span class="keyword">def</span> <span class="method">sync</span>(self, model: <span class="class">Type</span>[<span class="class">BaseModel</span>]) -> <span class="keyword">bool</span><br>
+&nbsp;&nbsp;<span class="keyword">def</span> <span class="method">get_schema</span>(self) -> <span class="keyword">dict</span><br>
+&nbsp;&nbsp;<span class="keyword">def</span> <span class="method">validate</span>(self, model: <span class="class">Type</span>[<span class="class">BaseModel</span>]) -> <span class="keyword">bool</span><br>
+<br>
+<span class="keyword">class</span> <span class="function">AsyncTableSync</span>:<br>
+&nbsp;&nbsp;<span class="comment"># Async version</span>
+                    </div>
+                </div>
+
+                <div class="api-card">
+                    <h3>from wsqlite import WSQLiteError</h3>
+                    <div class="api-code">
+<span class="keyword">class</span> <span class="function">WSQLiteError</span>(<span class="keyword">Exception</span>): <span class="comment"># Base exception</span><br>
+<br>
+<span class="keyword">class</span> <span class="function">ValidationError</span>(WSQLiteError):<br>
+<span class="keyword">class</span> <span class="function">ConnectionError</span>(WSQLiteError):<br>
+<span class="keyword">class</span> <span class="function">PoolExhaustedError</span>(WSQLiteError):<br>
+<span class="keyword">class</span> <span class="function">DatabaseLockedError</span>(WSQLiteError):<br>
+<span class="keyword">class</span> <span class="function">TransactionError</span>(WSQLiteError):<br>
+<span class="keyword">class</span> <span class="function">QueryError</span>(WSQLiteError):<br>
+<span class="keyword">class</span> <span class="function">SQLInjectionError</span>(WSQLiteError):
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Start Section -->
+    <section class="section" style="background: var(--bg-primary);">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-label">Get Started</span>
+                <h2 class="section-title">Quick <span class="gradient-text">Start Guide</span></h2>
+                <p class="section-description">
+                    Start using wsqlite in minutes with these fundamental patterns.
+                </p>
+            </div>
+            
+            <div style="max-width: 900px; margin: 0 auto;">
+                <div style="background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; margin-bottom: 1.5rem;">
+                    <h3 style="color: var(--primary-light); font-size: 1.125rem; margin-bottom: 1rem;">Basic CRUD Operations</h3>
+                    <div style="background: rgba(13, 17, 23, 0.8); border-radius: 10px; padding: 1.25rem; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #c9d1d9; overflow-x: auto; margin-bottom: 1rem; line-height: 1.8;">
+<span class="keyword">from</span> pydantic <span class="keyword">import</span> <span class="class">BaseModel</span><br>
+<span class="keyword">from</span> wsqlite <span class="keyword">import</span> <span class="function">WSQLite</span><br><br>
+<span class="keyword">class</span> <span class="class">User</span>(<span class="class">BaseModel</span>):<br>
+&nbsp;&nbsp;id: <span class="keyword">int</span><br>
+&nbsp;&nbsp;name: <span class="keyword">str</span><br>
+&nbsp;&nbsp;email: <span class="keyword">str</span><br><br>
+db = <span class="function">WSQLite</span>(User, <span class="string">"users.db"</span>)<br><br>
+<span class="comment"># Insert</span><br>
+user = db.<span class="method">insert</span>(User(id=<span class="number">1</span>, name=<span class="string">"Alice"</span>, email=<span class="string">"alice@example.com"</span>))<br><br>
+<span class="comment"># Query</span><br>
+all_users = db.<span class="method">get_all</span>()<br>
+alice = db.<span class="method">get_by_id</span>(<span class="number">1</span>)
+                    </div>
+                </div>
+
+                <div style="background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; margin-bottom: 1.5rem;">
+                    <h3 style="color: var(--primary-light); font-size: 1.125rem; margin-bottom: 1rem;">Async Operations</h3>
+                    <div style="background: rgba(13, 17, 23, 0.8); border-radius: 10px; padding: 1.25rem; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #c9d1d9; overflow-x: auto; margin-bottom: 1rem; line-height: 1.8;">
+<span class="keyword">import</span> asyncio<br>
+<span class="keyword">from</span> wsqlite <span class="keyword">import</span> <span class="function">WSQLite</span><br><br>
+<span class="keyword">async def</span> <span class="method">main</span>():<br>
+&nbsp;&nbsp;db = <span class="function">WSQLite</span>(User, <span class="string">"users.db"</span>)<br>
+&nbsp;&nbsp;<br>
+&nbsp;&nbsp;<span class="comment"># Async insert</span><br>
+&nbsp;&nbsp;<span class="keyword">await</span> db.<span class="method">insert_async</span>(User(id=<span class="number">2</span>, name=<span class="string">"Bob"</span>, email=<span class="string">"bob@example.com"</span>))<br>
+&nbsp;&nbsp;<br>
+&nbsp;&nbsp;<span class="comment"># Async query</span><br>
+&nbsp;&nbsp;users = <span class="keyword">await</span> db.<span class="method">get_all_async</span>()<br>
+&nbsp;&nbsp;<span class="function">print</span>(users)<br><br>
+asyncio.<span class="method">run</span>(<span class="method">main</span>())
+                    </div>
+                </div>
+
+                <div style="background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; margin-bottom: 1.5rem;">
+                    <h3 style="color: var(--primary-light); font-size: 1.125rem; margin-bottom: 1rem;">Transactions</h3>
+                    <div style="background: rgba(13, 17, 23, 0.8); border-radius: 10px; padding: 1.25rem; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #c9d1d9; overflow-x: auto; margin-bottom: 1rem; line-height: 1.8;">
+<span class="keyword">from</span> wsqlite <span class="keyword">import</span> <span class="function">Transaction</span><br><br>
+<span class="keyword">with</span> <span class="function">Transaction</span>(<span class="string">"users.db"</span>) <span class="keyword">as</span> tx:<br>
+&nbsp;&nbsp;tx.execute(<span class="string">"INSERT INTO users VALUES (?, ?, ?)"</span>, (<span class="number">3</span>, <span class="string">"Charlie"</span>, <span class="string">"charlie@example.com"</span>))<br>
+&nbsp;&nbsp;tx.execute(<span class="string">"INSERT INTO users VALUES (?, ?, ?)"</span>, (<span class="number">4</span>, <span class="string">"Diana"</span>, <span class="string">"diana@example.com"</span>))<br>
+&nbsp;&nbsp;tx.commit() <span class="comment"># Commits both or neither</span>
+                    </div>
+                </div>
+
+                <div style="background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 16px; padding: 2rem;">
+                    <h3 style="color: var(--primary-light); font-size: 1.125rem; margin-bottom: 1rem;">Connection Pooling</h3>
+                    <div style="background: rgba(13, 17, 23, 0.8); border-radius: 10px; padding: 1.25rem; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #c9d1d9; overflow-x: auto; line-height: 1.8;">
+<span class="keyword">from</span> wsqlite <span class="keyword">import</span> <span class="function">WSQLite</span>, <span class="function">ConnectionPool</span><br><br>
+<span class="comment"># With connection pooling</span><br>
+db = <span class="function">WSQLite</span>(User, <span class="string">"users.db"</span>, pool_size=<span class="number">20</span>)<br><br>
+<span class="comment"># Or use pool directly</span><br>
+pool = <span class="function">ConnectionPool</span>(<span class="string">"users.db"</span>, pool_size=<span class="number">10</span>)<br>
+conn = pool.<span class="method">get_connection</span>()
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Installation Section -->
+    <section id="installation" class="section install-section">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-label">Get Started</span>
+                <h2 class="section-title">Installation</h2>
+                <p class="section-description">
+                    Install wsqlite in seconds and start building type-safe database operations.
+                </p>
+            </div>
+
+            <div class="install-grid">
+                <div class="install-card">
+                    <div class="install-header">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                        <h3>PyPI (Recommended)</h3>
+                    </div>
+                    <div class="install-body">
+                        <div class="install-code">pip install wsqlite</div>
+                    </div>
+                </div>
+
+                <div class="install-card">
+                    <div class="install-header">
+                        <svg fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+                        </svg>
+                        <h3>From Source</h3>
+                    </div>
+                    <div class="install-body">
+                        <div class="install-code">
+<span class="comment"># Clone the repository</span><br>
+git clone https://github.com/wisrovi/wsqlite<br>
+cd wsqlite<br>
+pip install -e .
+                        </div>
+                    </div>
+                </div>
+
+                <div class="install-card">
+                    <div class="install-header">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
+                        </svg>
+                        <h3>Development Install</h3>
+                    </div>
+                    <div class="install-body">
+                        <div class="install-code">
+<span class="comment"># Install with dev dependencies</span><br>
+pip install -e ".[dev]"
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="section stats-section">
+        <div class="container">
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value">317</div>
+                    <div class="stat-label">Tests Passing</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">79%</div>
+                    <div class="stat-label">Code Coverage</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">12</div>
+                    <div class="stat-label">Exception Types</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">3.9+</div>
+                    <div class="stat-label">Python 3.9+</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">100%</div>
+                    <div class="stat-label">Type Hints</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">MIT</div>
+                    <div class="stat-label">License</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Author Section -->
+    <section class="section author-section">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-label">About the Author</span>
+                <h2 class="section-title">Meet the <span class="gradient-text">Creator</span></h2>
+            </div>
+
+            <div class="author-card">
+                <div class="author-avatar">WS</div>
+                <div class="author-info">
+                    <h3>William Steve Rodriguez Villamizar</h3>
+                    <p class="author-title">AI Leader & Solutions Architect</p>
+                    <p class="author-company">ecaptureDtech</p>
+                    <p class="author-bio">
+                        Bridging the gap between complex AI systems and practical business solutions. 
+                        With expertise in distributed systems, automation, and enterprise architecture. 
+                        Creator of multiple open-source Python libraries for data processing and security.
+                    </p>
+                    <div class="author-links">
+                        <a href="https://github.com/wisrovi" class="author-link" target="_blank">
+                            <svg fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+                            </svg>
+                            GitHub
+                        </a>
+                        <a href="https://www.linkedin.com/in/wisrovi-rodriguez/" class="author-link" target="_blank">
+                            <svg fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                            </svg>
+                            LinkedIn
+                        </a>
+                        <a href="https://wisrovi.github.io/" class="author-link" target="_blank">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
+                            </svg>
+                            Portfolio
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <div class="container">
+            <div class="cta-content">
+                <h2>Ready to Build <span class="gradient-text">Type-Safe</span> Apps?</h2>
+                <p>Start creating production-ready SQLite applications with Pydantic-powered type safety.</p>
+                <div class="hero-actions">
+                    <a href="https://github.com/wisrovi/wsqlite" class="btn btn-primary" target="_blank">
+                        <svg fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+                        </svg>
+                        Star on GitHub
+                    </a>
+                    <a href="https://wsqlite.readthedocs.io/" class="btn btn-secondary" target="_blank">
+                        Read Full Documentation
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
     <footer>
-        <p>&copy; 2024 William Steve Rodriguez Villamizar. MIT License.</p>
+        <div class="footer-content">
+            <a href="#" class="footer-brand">
+                <div class="footer-brand-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                        <path d="M3 5v14a9 3 0 0 0 18 0V5"/>
+                        <path d="M3 12a9 3 0 0 0 18 0"/>
+                    </svg>
+                </div>
+                wsqlite
+            </a>
+            <div class="footer-links">
+                <a href="https://github.com/wisrovi/wsqlite" class="footer-link" target="_blank">GitHub</a>
+                <a href="https://github.com/wisrovi/wsqlite/releases" class="footer-link" target="_blank">Releases</a>
+                <a href="https://wsqlite.readthedocs.io/" class="footer-link" target="_blank">Documentation</a>
+                <a href="https://pypi.org/project/wsqlite/" class="footer-link" target="_blank">PyPI</a>
+            </div>
+            <p class="footer-copyright">
+                MIT License © 2024-2026 William Steve Rodriguez Villamizar
+            </p>
+        </div>
     </footer>
+
+    <script>
+        window.addEventListener('scroll', function() {
+            const nav = document.getElementById('nav');
+            if (window.scrollY > 50) {
+                nav.classList.add('scrolled');
+            } else {
+                nav.classList.remove('scrolled');
+            }
+        });
+
+        const observerOptions = { threshold: 0.1, rootMargin: '0px 0px -50px 0px' };
+
+        const observer = new IntersectionObserver(function(entries) {
+            entries.forEach(function(entry) {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.problem-card, .feature-card, .install-card, .api-card').forEach(function(el) {
+            el.classList.add('animate-on-scroll');
+            observer.observe(el);
+        });
+    </script>
 </body>
 </html>
