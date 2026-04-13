@@ -59,7 +59,7 @@ from wsqlite.exceptions import (
     TimeoutError,
 )
 
-__version__ = "1.1.0"
+__version__ = "1.2.1"
 
 WSQLite = WSQLiteImpl
 

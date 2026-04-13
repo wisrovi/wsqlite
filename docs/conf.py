@@ -16,7 +16,7 @@ project = "wsqlite"
 copyright = "2024-2026, William Steve Rodriguez Villamizar"
 author = "William Steve Rodriguez Villamizar"
 author_url = "https://es.linkedin.com/in/wisrovi-rodriguez"
-release = "1.2.0"
+release = "1.2.1"
 version = "1.2"
 
 # -- General configuration ---------------------------------------------------
