@@ -106,6 +106,7 @@ Quick Start
    FAQ <faq>
    Glossary <glossary>
    Bibliography <bibliography>
+   Community <community>
 
 .. toctree::
    :maxdepth: 1
