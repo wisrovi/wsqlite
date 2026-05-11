@@ -179,6 +179,40 @@ wsqlite/
 
 ## 🎯 Advanced Features
 
+### Auto-incrementing IDs
+To define an auto-incrementing primary key, use `Optional[int]` with `Field(description="primary autoincrement")`:
+```python
+from typing import Optional
+from pydantic import BaseModel, Field
+
+class User(BaseModel):
+    id: Optional[int] = Field(None, description="primary autoincrement")
+    name: str
+
+# When inserting, skip the id field or set it to None
+db.insert(User(name="Alice"))
+```
+
+### Composite Unique Constraints
+To define a unique constraint across multiple columns, use `unique:group_name` in the field descriptions:
+```python
+class User(BaseModel):
+    name: str = Field(..., description="unique:name_lastname")
+    lastname: str = Field(..., description="unique:name_lastname")
+
+# (name, lastname) must be unique together
+```
+
+### Foreign Keys
+To define a foreign key relationship, use `references:table.column`:
+```python
+class Book(BaseModel):
+    title: str
+    author_id: int = Field(..., description="references:author.id")
+
+# Foreign key enforcement is enabled by default
+```
+
 ### Connection Pool
 ```python
 from wsqlite import ConnectionPool, WSQLite

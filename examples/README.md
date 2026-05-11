@@ -18,6 +18,9 @@ Usage examples demonstrating wsqlite library functionality.
 | [10_aggregations/](10_aggregations/) | Aggregation functions |
 | [11_timestamps/](11_timestamps/) | Auto timestamps |
 | [12_soft_delete/](12_soft_delete/) | Soft delete pattern |
+| [13_autoid/](13_autoid/) | Auto-incrementing IDs |
+| [14_advance_restrictions/](14_advance_restrictions/) | Composite unique constraints |
+| [15_foreign_keys/](15_foreign_keys/) | Foreign key relationships |
 
 ## Running Examples
 

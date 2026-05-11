@@ -1,5 +1,6 @@
 """Tests for SQL types module."""
 
+from typing import Optional, Union
 import pytest
 from pydantic import BaseModel, Field
 
@@ -14,6 +15,26 @@ class TestGetSqlType:
 
         class Model(BaseModel):
             id: int
+
+        field = Model.model_fields["id"]
+        sql_type = get_sql_type(field)
+        assert "INTEGER" in sql_type
+
+    def test_optional_integer_type(self):
+        """Test optional integer type mapping."""
+
+        class Model(BaseModel):
+            id: Optional[int]
+
+        field = Model.model_fields["id"]
+        sql_type = get_sql_type(field)
+        assert "INTEGER" in sql_type
+
+    def test_union_integer_type(self):
+        """Test union integer type mapping."""
+
+        class Model(BaseModel):
+            id: Union[int, None]
 
         field = Model.model_fields["id"]
         sql_type = get_sql_type(field)
@@ -48,6 +69,17 @@ class TestGetSqlType:
         field = Model.model_fields["id"]
         sql_type = get_sql_type(field)
         assert "PRIMARY KEY" in sql_type
+
+    def test_autoincrement_constraint(self):
+        """Test autoincrement constraint."""
+
+        class Model(BaseModel):
+            id: int = Field(..., description="primary autoincrement")
+
+        field = Model.model_fields["id"]
+        sql_type = get_sql_type(field)
+        assert "PRIMARY KEY" in sql_type
+        assert "AUTOINCREMENT" in sql_type
 
     def test_unique_constraint(self):
         """Test unique constraint."""

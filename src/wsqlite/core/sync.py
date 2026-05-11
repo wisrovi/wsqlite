@@ -31,10 +31,45 @@ class TableSync:
 
     def create_if_not_exists(self):
         """Create the table if it doesn't exist."""
-        fields = ", ".join(
-            f"{field} {get_sql_type(typ)}" for field, typ in self.model.model_fields.items()
-        )
-        query = f"CREATE TABLE IF NOT EXISTS {self.table_name} ({fields})"
+        column_defs = []
+        composite_uniques = {}  # group_name -> [fields]
+        foreign_keys = []  # [(local_col, ref_table, ref_col)]
+
+        for field_name, field in self.model.model_fields.items():
+            col_type = get_sql_type(field)
+            column_defs.append(f"{field_name} {col_type}")
+
+            description = (field.description or "").lower()
+
+            # Check for composite unique: unique:group1
+            if "unique:" in description:
+                match = re.search(r"unique:([a-zA-Z0-9_]+)", description)
+                if match:
+                    group = match.group(1)
+                    if group not in composite_uniques:
+                        composite_uniques[group] = []
+                    composite_uniques[group].append(field_name)
+
+            # Check for foreign key: references:table.column
+            if "references:" in description:
+                match = re.search(r"references:([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)", description)
+                if match:
+                    ref_table = match.group(1)
+                    ref_col = match.group(2)
+                    foreign_keys.append((field_name, ref_table, ref_col))
+
+        # Add composite uniques to column_defs
+        for fields in composite_uniques.values():
+            fields_str = ", ".join(fields)
+            column_defs.append(f"UNIQUE({fields_str})")
+
+        # Add foreign keys to column_defs
+        for local_col, ref_table, ref_col in foreign_keys:
+            column_defs.append(f"FOREIGN KEY({local_col}) REFERENCES {ref_table}({ref_col})")
+
+        fields_clause = ", ".join(column_defs)
+        query = f"CREATE TABLE IF NOT EXISTS {self.table_name} ({fields_clause})"
+        
         with get_connection(self.db_path) as conn:
             conn.execute(query)
             conn.commit()
@@ -132,10 +167,41 @@ class AsyncTableSync:
 
     async def create_if_not_exists_async(self):
         """Create the table if it doesn't exist (async)."""
-        fields = ", ".join(
-            f"{field} {get_sql_type(typ)}" for field, typ in self.model.model_fields.items()
-        )
-        query = f"CREATE TABLE IF NOT EXISTS {self.table_name} ({fields})"
+        column_defs = []
+        composite_uniques = {}
+        foreign_keys = []
+
+        for field_name, field in self.model.model_fields.items():
+            col_type = get_sql_type(field)
+            column_defs.append(f"{field_name} {col_type}")
+
+            description = (field.description or "").lower()
+
+            if "unique:" in description:
+                match = re.search(r"unique:([a-zA-Z0-9_]+)", description)
+                if match:
+                    group = match.group(1)
+                    if group not in composite_uniques:
+                        composite_uniques[group] = []
+                    composite_uniques[group].append(field_name)
+
+            if "references:" in description:
+                match = re.search(r"references:([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)", description)
+                if match:
+                    ref_table = match.group(1)
+                    ref_col = match.group(2)
+                    foreign_keys.append((field_name, ref_table, ref_col))
+
+        for fields in composite_uniques.values():
+            fields_str = ", ".join(fields)
+            column_defs.append(f"UNIQUE({fields_str})")
+
+        for local_col, ref_table, ref_col in foreign_keys:
+            column_defs.append(f"FOREIGN KEY({local_col}) REFERENCES {ref_table}({ref_col})")
+
+        fields_clause = ", ".join(column_defs)
+        query = f"CREATE TABLE IF NOT EXISTS {self.table_name} ({fields_clause})"
+        
         conn = await get_async_connection(self.db_path)
         try:
             await conn.execute(query)

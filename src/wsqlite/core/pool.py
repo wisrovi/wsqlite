@@ -62,6 +62,7 @@ class ConnectionPool:
         cache_size: int = -2000,
         synchronous: str = "NORMAL",
         journal_mode: str = "WAL",
+        foreign_keys: bool = True,
     ):
         self.db_path = db_path
         self.min_size = min_size
@@ -72,6 +73,7 @@ class ConnectionPool:
         self.cache_size = cache_size
         self.synchronous = synchronous
         self.journal_mode = journal_mode
+        self.foreign_keys = foreign_keys
 
         self._pool: Queue = Queue(maxsize=max_size)
         self._size = 0
@@ -98,6 +100,8 @@ class ConnectionPool:
             conn.execute(f"PRAGMA synchronous={self.synchronous}")
             conn.execute(f"PRAGMA busy_timeout={self.busy_timeout}")
             conn.execute(f"PRAGMA cache_size={self.cache_size}")
+            if self.foreign_keys:
+                conn.execute("PRAGMA foreign_keys = ON")
             conn.execute("PRAGMA temp_store=MEMORY")
             conn.execute("PRAGMA mmap_size=268435456")
             conn.commit()
@@ -126,6 +130,8 @@ class ConnectionPool:
         conn.execute(f"PRAGMA synchronous={self.synchronous}")
         conn.execute(f"PRAGMA busy_timeout={self.busy_timeout}")
         conn.execute(f"PRAGMA cache_size={self.cache_size}")
+        if self.foreign_keys:
+            conn.execute("PRAGMA foreign_keys = ON")
 
         return conn
 
@@ -319,12 +325,14 @@ class AsyncConnectionPool:
         db_path: str,
         min_size: int = 2,
         max_size: int = 20,
+        foreign_keys: bool = True,
     ):
         import aiosqlite
 
         self.db_path = db_path
         self.min_size = min_size
         self.max_size = max_size
+        self.foreign_keys = foreign_keys
         self._pool: Queue = Queue(maxsize=max_size)
         self._size = 0
         self._lock = Lock()
@@ -347,6 +355,8 @@ class AsyncConnectionPool:
             await conn.execute("PRAGMA synchronous=NORMAL")
             await conn.execute("PRAGMA busy_timeout=5000")
             await conn.execute("PRAGMA cache_size=-2000")
+            if self.foreign_keys:
+                await conn.execute("PRAGMA foreign_keys = ON")
             await conn.commit()
             await conn.close()
 
@@ -360,6 +370,8 @@ class AsyncConnectionPool:
             for _ in range(self.min_size):
                 conn = await self._aiosqlite.connect(self.db_path)
                 conn.row_factory = self._aiosqlite.Row
+                if self.foreign_keys:
+                    await conn.execute("PRAGMA foreign_keys = ON")
                 self._pool.put(conn)
                 self._size += 1
 
@@ -369,6 +381,8 @@ class AsyncConnectionPool:
         """Create a new async connection."""
         conn = await self._aiosqlite.connect(self.db_path)
         conn.row_factory = self._aiosqlite.Row
+        if self.foreign_keys:
+            await conn.execute("PRAGMA foreign_keys = ON")
         return conn
 
     async def get_connection(self):
@@ -469,6 +483,7 @@ def get_async_pool(
     db_path: str,
     min_size: int = 2,
     max_size: int = 10,
+    **kwargs,
 ) -> AsyncConnectionPool:
     """Get or create global asynchronous connection pool."""
     global _global_async_pool
@@ -479,6 +494,7 @@ def get_async_pool(
                 db_path,
                 min_size=min_size,
                 max_size=max_size,
+                **kwargs,
             )
         return _global_async_pool
 

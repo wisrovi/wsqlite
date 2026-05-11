@@ -3,7 +3,7 @@
 import logging
 import threading
 from contextlib import contextmanager
-from typing import Any, Iterator, Optional
+from typing import Any, AsyncIterator, Iterator, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -146,16 +146,13 @@ class AsyncTransaction:
 @contextmanager
 def get_transaction(db_path: str) -> Iterator[Transaction]:
     """Get a transaction context manager (sync)."""
-    transaction = Transaction(db_path)
-    yield transaction
-
-
-@contextmanager
-async def get_async_transaction(db_path: str) -> Iterator[AsyncTransaction]:
-    """Get an async transaction context manager."""
-    transaction = AsyncTransaction(db_path)
-    async with transaction:
+    with Transaction(db_path) as transaction:
         yield transaction
+
+
+def get_async_transaction(db_path: str) -> AsyncTransaction:
+    """Get an async transaction context manager."""
+    return AsyncTransaction(db_path)
 
 
 def get_connection(db_path: str) -> _SQLiteConnection:
