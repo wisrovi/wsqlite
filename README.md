@@ -27,6 +27,7 @@
 - [📊 Performance](#-performance-at-a-glance)
 - [📦 Installation](#-installation)
 - [🚀 Quick Start](#-quick-start-in-60-seconds)
+- [🛠️ SQL Constraints Reference](#️-sql-constraints-reference)
 - [🎯 Advanced Functionality](#-advanced-functionality)
 - [📁 Project Structure](#-project-structure)
 - [🧪 Testing & Quality](#-testing--quality)
@@ -103,6 +104,36 @@ john = db.get_by_field(email="john@example.com")
 async def main():
     await db.insert_async(User(name="Jane Doe", email="jane@example.com"))
     users = await db.get_all_async()
+```
+
+## 🛠️ SQL Constraints Reference
+
+`wsqlite` uses the `description` parameter of Pydantic's `Field` to define SQL constraints in a declarative way.
+
+| Constraint | Syntax in `Field(description="...")` | Example |
+| :--- | :--- | :--- |
+| **Primary Key** | `"primary"` | `id: int = Field(..., description="primary")` |
+| **Auto-increment** | `"primary autoincrement"` | `id: Optional[int] = Field(None, description="primary autoincrement")` |
+| **Unique** | `"unique"` | `email: str = Field(..., description="unique")` |
+| **Not Null** | `"not null"` | `name: str = Field(..., description="not null")` |
+| **Composite Unique** | `"unique:group_name"` | `col1: str = Field(..., description="unique:my_group")` |
+| **Foreign Key** | `"references:table.column"` | `user_id: int = Field(..., description="references:user.id")` |
+
+### Example Model with all Constraints
+```python
+class Employee(BaseModel):
+    # Auto-incrementing Primary Key
+    id: Optional[int] = Field(None, description="primary autoincrement")
+    
+    # Required and Unique
+    employee_code: str = Field(..., description="unique not null")
+    
+    # Composite Unique (unique together: department + position)
+    department: str = Field(..., description="unique:job_role")
+    position: str = Field(..., description="unique:job_role")
+    
+    # Foreign Key
+    office_id: int = Field(..., description="references:office.id")
 ```
 
 ## 🎯 Advanced Functionality
