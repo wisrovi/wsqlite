@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.2] - 2026-05-11
+
+### Added
+- **Composite Unique Constraints** - Support for defining UNIQUE constraints across multiple columns using `unique:group_name` syntax.
+- **Foreign Keys Support** - Declarative foreign key definitions using `references:table.column` syntax.
+- **Auto-incrementing IDs** - Full support for `AUTOINCREMENT` primary keys with `Optional[int]` mapping.
+- **Improved Type Mapping** - Enhanced `get_sql_type` to handle `Optional`, `Union`, and complex typing annotations.
+- **Connection Pool Enhancements** - Automatic enforcement of Foreign Keys (`PRAGMA foreign_keys = ON`) in both sync and async pools.
+- **New Examples** - Added detailed examples for `autoid`, `advance_restrictions`, and `foreign_keys`.
+
+### Fixed
+- **Transaction Context Bug** - Fixed a critical issue in `get_transaction` and `AsyncTransaction` where connections were not being properly initialized, causing `AttributeError` when executing raw SQL.
+- **SQL Type Detection** - Corrected a bug where `Optional[int]` fields were being incorrectly mapped to `TEXT` instead of `INTEGER`.
+
+### Documentation
+- Completely redesigned `README.md` with better structure, features list, and advanced examples.
+- Updated landing page (`index.html`) and Sphinx configuration.
+
 ## [1.2.1] - 2026-04-14
 
 ### Added
@@ -62,25 +80,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pydantic model integration
 - Table synchronization
 - Query builder
-
----
-
-## [Unreleased] - yyyy-mm-dd
-
-### Added
-- (Future features here)
-
-### Changed
-- (Changes here)
-
-### Deprecated
-- (Soon-to-be removed features)
-
-### Removed
-- (Removed features)
-
-### Fixed
-- (Bug fixes)
-
-### Security
-- (Security improvements)

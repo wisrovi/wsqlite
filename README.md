@@ -21,6 +21,17 @@
 
 `wsqlite` is a high-level Python ORM library that provides a clean, type-safe interface for SQLite database operations. By leveraging **Pydantic v2**, it ensures data integrity and offers a modern development experience with automatic schema synchronization and full async support.
 
+## 📖 Table of Contents
+- [🌟 Key Features](#-key-features)
+- [🤔 Why wsqlite?](#-why-wsqlite)
+- [📊 Performance](#-performance-at-a-glance)
+- [📦 Installation](#-installation)
+- [🚀 Quick Start](#-quick-start-in-60-seconds)
+- [🎯 Advanced Functionality](#-advanced-functionality)
+- [📁 Project Structure](#-project-structure)
+- [🧪 Testing & Quality](#-testing--quality)
+- [📝 License & Author](#-license--author)
+
 ## 🌟 Key Features
 
 - **🔗 Pydantic Integration** - Define your database schema using standard Pydantic v2 models.
@@ -34,6 +45,14 @@
 - **🔨 Query Builders** - Safe, fluent API for complex queries with JOINs, GROUP BY, and more.
 - **🔄 Versioned Migrations** - Robust system for schema versioning and upgrades/rollbacks.
 - **🧪 Battle Tested** - 300+ tests and built-in stress testing/benchmarking tools.
+
+## 🤔 Why wsqlite?
+
+Most Python ORMs are either too heavy (SQLAlchemy) or too basic (raw sqlite3). `wsqlite` fills the gap by providing:
+1. **Zero Boilerplate**: No need to write `CREATE TABLE` statements or manual migrations for new columns.
+2. **Developer Experience**: Use the same Pydantic models for your API (FastAPI) and your Database.
+3. **Safety First**: SQL Injection protection and strict type validation out of the box.
+4. **Performance**: Optimized connection pooling and WAL mode for concurrent applications.
 
 ## 📊 Performance at a Glance
 
