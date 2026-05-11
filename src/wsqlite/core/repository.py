@@ -15,6 +15,7 @@ from wsqlite.core.connection import (
     retry_on_lock,
 )
 from wsqlite.core.pool import ConnectionPool, get_pool, close_pool
+from wsqlite.core.serialization import serialize_value, deserialize_value
 from wsqlite.core.sync import AsyncTableSync, TableSync
 from wsqlite.exceptions import DatabaseLockedError, SQLInjectionError, TransactionError
 
@@ -57,40 +58,82 @@ class WSQLite:
         self,
         model: type[BaseModel],
         db_path: str,
-        pool_size: int = 10,
-        min_pool_size: int = 2,
+        pool: Optional[ConnectionPool] = None,
         use_pool: bool = True,
+        table_name: Optional[str] = None,
+        soft_delete: bool = False,
+        deleted_at_field: str = "deleted_at",
+        sync_handler: Optional[TableSync] = None,
     ):
         """Initialize the repository with a Pydantic model.
 
         Args:
             model: Pydantic BaseModel class defining the table schema.
             db_path: Path to SQLite database file.
-            pool_size: Maximum number of connections in pool.
-            min_pool_size: Minimum number of connections in pool.
+            pool: Optional pre-configured connection pool.
             use_pool: Whether to use connection pooling (recommended).
+            table_name: Optional custom table name.
+            soft_delete: Whether to use soft deletes (default False).
+            deleted_at_field: Name of the field for soft deletes (default "deleted_at").
+            sync_handler: Optional pre-configured TableSync instance.
         """
         self.model = model
         self.db_path = db_path
-        self.table_name = model.__name__.lower()
+        self.table_name = table_name or model.__name__.lower()
         self.use_pool = use_pool
+        self.soft_delete = soft_delete
+        self.deleted_at_field = deleted_at_field
 
-        if use_pool:
-            self._pool = get_pool(
-                db_path,
-                min_size=min_pool_size,
-                max_size=pool_size,
-            )
+        if use_pool and pool is None:
+            self._pool = get_pool(db_path)
         else:
-            self._pool = None
+            self._pool = pool
 
-        self._sync = TableSync(model, db_path)
+        self._sync = sync_handler or TableSync(model, db_path, table_name=self.table_name)
         self._sync.create_if_not_exists()
         self._sync.sync_with_model()
 
         logger.info(
-            f"WSQLite initialized for table '{self.table_name}' (pool={use_pool}, size={pool_size})"
+            f"WSQLite initialized for table '{self.table_name}' (pool={use_pool}, size={pool_size}, soft_delete={soft_delete})"
         )
+
+    def _call_hook(self, instance: Any, hook_name: str, *args, **kwargs) -> None:
+        """Call a hook method on the model instance if it exists."""
+        hook = getattr(instance, hook_name, None)
+        if hook and callable(hook):
+            hook(*args, **kwargs)
+
+    def _soft_delete_condition(self, prefix: str = "") -> str:
+        """Return the SQL condition for soft delete filtering."""
+        if not self.soft_delete:
+            return ""
+        col = f"{prefix}.{self.deleted_at_field}" if prefix else self.deleted_at_field
+        return f"{col} IS NULL"
+
+    def _add_soft_delete_filter(self, conditions: str) -> str:
+        """Add soft delete condition to WHERE clause if enabled."""
+        sd_cond = self._soft_delete_condition()
+        if not sd_cond:
+            return conditions
+        return f"({conditions}) AND {sd_cond}" if conditions else sd_cond
+
+    def _dump(self, data: BaseModel) -> dict:
+        """Serialize a model instance to a dictionary for SQLite insertion."""
+        data_dict = data.model_dump(mode='json')
+        for key, val in data_dict.items():
+            if key in self.model.model_fields:
+                annotation = self.model.model_fields[key].annotation
+                data_dict[key] = serialize_value(val, annotation)
+        return data_dict
+
+    def _load(self, row: tuple) -> BaseModel:
+        """Deserialize a SQLite row to a model instance."""
+        data = {}
+        for key, value in zip(self.model.model_fields.keys(), row):
+            annotation = self.model.model_fields[key].annotation
+            val = deserialize_value(value, annotation) if value is not None else self._default_value(key)
+            data[key] = val
+        return self.model(**data)
 
     def _execute(self, query: str, values: tuple = (), commit: bool = True) -> Any:
         """Execute a query using pool or direct connection."""
@@ -117,62 +160,67 @@ class WSQLite:
 
     def insert(self, data: BaseModel) -> None:
         """Insert a new record into the database."""
-        data_dict = data.model_dump()
+        self._call_hook(data, "pre_save")
+        
+        data_dict = self._dump(data)
         fields = ", ".join(data_dict.keys())
         placeholders = ", ".join(["?"] * len(data_dict))
         values = tuple(data_dict.values())
 
         query = f"INSERT INTO {self.table_name} ({fields}) VALUES ({placeholders})"
         self._execute(query, values)
+        
+        self._call_hook(data, "post_save")
 
     def get_all(self) -> list[BaseModel]:
         """Get all records from the table."""
-        query = f"SELECT * FROM {self.table_name}"
+        condition = self._soft_delete_condition()
+        where_clause = f" WHERE {condition}" if condition else ""
+        query = f"SELECT * FROM {self.table_name}{where_clause}"
         rows = self._execute(query, commit=False)
-
-        return [
-            self.model(
-                **{
-                    key: (value if value is not None else self._default_value(key))
-                    for key, value in zip(self.model.model_fields.keys(), row)
-                }
-            )
-            for row in rows
-        ]
+        return [self._load(row) for row in rows]
 
     def get_by_field(self, **filters) -> list[BaseModel]:
         """Get records filtered by specified fields."""
-        if not filters:
-            return self.get_all()
-
-        conditions = " AND ".join(f"{key} = ?" for key in filters)
+        conditions_list = [f"{key} = ?" for key in filters]
+        conditions = " AND ".join(conditions_list)
+        conditions = self._add_soft_delete_filter(conditions)
+        
+        where_clause = f" WHERE {conditions}" if conditions else ""
         values = tuple(filters.values())
-        query = f"SELECT * FROM {self.table_name} WHERE {conditions}"
+        query = f"SELECT * FROM {self.table_name}{where_clause}"
 
         rows = self._execute(query, values, commit=False)
-
-        return [
-            self.model(
-                **{
-                    key: (value if value is not None else self._default_value(key))
-                    for key, value in zip(self.model.model_fields.keys(), row)
-                }
-            )
-            for row in rows
-        ]
+        return [self._load(row) for row in rows]
 
     def update(self, record_id: int, data: BaseModel) -> None:
         """Update a record in the database."""
-        data_dict = data.model_dump()
+        self._call_hook(data, "pre_save")
+        
+        data_dict = self._dump(data)
         fields = ", ".join(f"{key} = ?" for key in data_dict.keys())
         values = tuple(data_dict.values()) + (record_id,)
         query = f"UPDATE {self.table_name} SET {fields} WHERE id = ?"
 
         self._execute(query, values)
+        self._call_hook(data, "post_save")
 
     def delete(self, record_id: int) -> None:
-        """Delete a record from the database."""
-        query = f"DELETE FROM {self.table_name} WHERE id = ?"
+        """Delete a record from the database (hard or soft)."""
+        if self.soft_delete:
+            from datetime import datetime
+            now = datetime.now().isoformat()
+            query = f"UPDATE {self.table_name} SET {self.deleted_at_field} = ? WHERE id = ?"
+            self._execute(query, (now, record_id))
+        else:
+            query = f"DELETE FROM {self.table_name} WHERE id = ?"
+            self._execute(query, (record_id,))
+
+    def restore(self, record_id: int) -> None:
+        """Restore a soft-deleted record."""
+        if not self.soft_delete:
+            return
+        query = f"UPDATE {self.table_name} SET {self.deleted_at_field} = NULL WHERE id = ?"
         self._execute(query, (record_id,))
 
     def _default_value(self, field: str) -> Any:
@@ -193,37 +241,21 @@ class WSQLite:
         order_by: Optional[str] = None,
         order_desc: bool = False,
     ) -> list[BaseModel]:
-        """Get records with pagination.
-
-        Args:
-            limit: Maximum number of records to return.
-            offset: Number of records to skip.
-            order_by: Column to order by.
-            order_desc: If True, order descending.
-
-        Returns:
-            List of model instances.
-        """
+        """Get records with pagination."""
         validate_identifier(self.table_name)
+        
+        condition = self._soft_delete_condition()
+        where_clause = f" WHERE {condition}" if condition else ""
+        
         if order_by:
             validate_identifier(order_by)
             order_clause = f" ORDER BY {order_by} {'DESC' if order_desc else 'ASC'}"
         else:
             order_clause = ""
 
-        query = f"SELECT * FROM {self.table_name}{order_clause} LIMIT ? OFFSET ?"
-
+        query = f"SELECT * FROM {self.table_name}{where_clause}{order_clause} LIMIT ? OFFSET ?"
         rows = self._execute(query, (limit, offset), commit=False)
-
-        return [
-            self.model(
-                **{
-                    key: (value if value is not None else self._default_value(key))
-                    for key, value in zip(self.model.model_fields.keys(), row)
-                }
-            )
-            for row in rows
-        ]
+        return [self._load(row) for row in rows]
 
     def get_page(self, page: int = 1, per_page: int = 10) -> list[BaseModel]:
         """Get records by page number.
@@ -245,7 +277,10 @@ class WSQLite:
     def count(self) -> int:
         """Get total number of records in the table."""
         validate_identifier(self.table_name)
-        query = f"SELECT COUNT(*) FROM {self.table_name}"
+        condition = self._soft_delete_condition()
+        where_clause = f" WHERE {condition}" if condition else ""
+        
+        query = f"SELECT COUNT(*) FROM {self.table_name}{where_clause}"
         result = self._execute(query, commit=False)
         return result[0][0] if result else 0
 
@@ -258,7 +293,10 @@ class WSQLite:
         if not data_list:
             return
 
-        data_dicts = [data.model_dump() for data in data_list]
+        for data in data_list:
+            self._call_hook(data, "pre_save")
+
+        data_dicts = [self._dump(data) for data in data_list]
         fields = ", ".join(data_dicts[0].keys())
         placeholders = ", ".join(["?"] * len(data_dicts[0]))
 
@@ -276,6 +314,9 @@ class WSQLite:
                     values = tuple(data_dict.values())
                     txn.execute(query, values)
                 txn.commit()
+        
+        for data in data_list:
+            self._call_hook(data, "post_save")
 
     def update_many(self, updates: list[tuple[BaseModel, int]]) -> int:
         """Update multiple records.
@@ -289,13 +330,16 @@ class WSQLite:
         if not updates:
             return 0
 
+        for data, _ in updates:
+            self._call_hook(data, "pre_save")
+
         validate_identifier(self.table_name)
         total_updated = 0
 
         if self.use_pool and self._pool:
             with self._pool.connection() as conn:
                 for data, record_id in updates:
-                    data_dict = data.model_dump()
+                    data_dict = self._dump(data)
                     fields = ", ".join(f"{key} = ?" for key in data_dict)
                     values = tuple(data_dict.values()) + (record_id,)
                     query = f"UPDATE {self.table_name} SET {fields} WHERE id = ?"
@@ -305,7 +349,7 @@ class WSQLite:
         else:
             with get_transaction(self.db_path) as txn:
                 for data, record_id in updates:
-                    data_dict = data.model_dump()
+                    data_dict = self._dump(data)
                     fields = ", ".join(f"{key} = ?" for key in data_dict)
                     values = tuple(data_dict.values()) + (record_id,)
                     query = f"UPDATE {self.table_name} SET {fields} WHERE id = ?"
@@ -313,10 +357,13 @@ class WSQLite:
                     total_updated += txn.conn.total_changes
                 txn.commit()
 
+        for data, _ in updates:
+            self._call_hook(data, "post_save")
+
         return total_updated
 
     def delete_many(self, record_ids: list[int]) -> int:
-        """Delete multiple records by their IDs.
+        """Delete multiple records by their IDs (hard or soft).
 
         Args:
             record_ids: List of record IDs to delete.
@@ -329,17 +376,24 @@ class WSQLite:
 
         validate_identifier(self.table_name)
 
+        if self.soft_delete:
+            from datetime import datetime
+            now = datetime.now().isoformat()
+            query = f"UPDATE {self.table_name} SET {self.deleted_at_field} = ? WHERE id = ?"
+            params = [(now, rid) for rid in record_ids]
+        else:
+            query = f"DELETE FROM {self.table_name} WHERE id = ?"
+            params = [(rid,) for rid in record_ids]
+
         if self.use_pool and self._pool:
             with self._pool.connection() as conn:
-                for record_id in record_ids:
-                    query = f"DELETE FROM {self.table_name} WHERE id = ?"
-                    conn.execute(query, (record_id,))
+                for p in params:
+                    conn.execute(query, p)
                 conn.commit()
         else:
             with get_transaction(self.db_path) as txn:
-                for record_id in record_ids:
-                    query = f"DELETE FROM {self.table_name} WHERE id = ?"
-                    txn.execute(query, (record_id,))
+                for p in params:
+                    txn.execute(query, p)
                 txn.commit()
 
         return len(record_ids)
@@ -408,7 +462,9 @@ class WSQLite:
 
     async def insert_async(self, data: BaseModel) -> None:
         """Insert a new record into the database (async)."""
-        data_dict = data.model_dump()
+        self._call_hook(data, "pre_save")
+        
+        data_dict = self._dump(data)
         fields = ", ".join(data_dict.keys())
         placeholders = ", ".join(["?"] * len(data_dict))
         values = tuple(data_dict.values())
@@ -420,10 +476,14 @@ class WSQLite:
             await conn.commit()
         finally:
             await conn.close()
+            
+        self._call_hook(data, "post_save")
 
     async def get_all_async(self) -> list[BaseModel]:
         """Get all records from the table (async)."""
-        query = f"SELECT * FROM {self.table_name}"
+        condition = self._soft_delete_condition()
+        where_clause = f" WHERE {condition}" if condition else ""
+        query = f"SELECT * FROM {self.table_name}{where_clause}"
         conn = await get_async_connection(self.db_path)
         try:
             cursor = await conn.execute(query)
@@ -431,24 +491,17 @@ class WSQLite:
         finally:
             await conn.close()
 
-        return [
-            self.model(
-                **{
-                    key: (value if value is not None else self._default_value(key))
-                    for key, value in zip(self.model.model_fields.keys(), row)
-                }
-            )
-            for row in rows
-        ]
+        return [self._load(row) for row in rows]
 
     async def get_by_field_async(self, **filters) -> list[BaseModel]:
         """Get records filtered by specified fields (async)."""
-        if not filters:
-            return await self.get_all_async()
-
-        conditions = " AND ".join(f"{key} = ?" for key in filters)
+        conditions_list = [f"{key} = ?" for key in filters]
+        conditions = " AND ".join(conditions_list)
+        conditions = self._add_soft_delete_filter(conditions)
+        
+        where_clause = f" WHERE {conditions}" if conditions else ""
         values = tuple(filters.values())
-        query = f"SELECT * FROM {self.table_name} WHERE {conditions}"
+        query = f"SELECT * FROM {self.table_name}{where_clause}"
 
         conn = await get_async_connection(self.db_path)
         try:
@@ -457,19 +510,13 @@ class WSQLite:
         finally:
             await conn.close()
 
-        return [
-            self.model(
-                **{
-                    key: (value if value is not None else self._default_value(key))
-                    for key, value in zip(self.model.model_fields.keys(), row)
-                }
-            )
-            for row in rows
-        ]
+        return [self._load(row) for row in rows]
 
     async def update_async(self, record_id: int, data: BaseModel) -> None:
         """Update a record in the database (async)."""
-        data_dict = data.model_dump()
+        self._call_hook(data, "pre_save")
+        
+        data_dict = self._dump(data)
         fields = ", ".join(f"{key} = ?" for key in data_dict.keys())
         values = tuple(data_dict.values()) + (record_id,)
         query = f"UPDATE {self.table_name} SET {fields} WHERE id = ?"
@@ -480,10 +527,32 @@ class WSQLite:
             await conn.commit()
         finally:
             await conn.close()
+            
+        self._call_hook(data, "post_save")
 
     async def delete_async(self, record_id: int) -> None:
-        """Delete a record from the database (async)."""
-        query = f"DELETE FROM {self.table_name} WHERE id = ?"
+        """Delete a record from the database (async, hard or soft)."""
+        if self.soft_delete:
+            from datetime import datetime
+            now = datetime.now().isoformat()
+            query = f"UPDATE {self.table_name} SET {self.deleted_at_field} = ? WHERE id = ?"
+            values = (now, record_id)
+        else:
+            query = f"DELETE FROM {self.table_name} WHERE id = ?"
+            values = (record_id,)
+            
+        conn = await get_async_connection(self.db_path)
+        try:
+            await conn.execute(query, values)
+            await conn.commit()
+        finally:
+            await conn.close()
+
+    async def restore_async(self, record_id: int) -> None:
+        """Restore a soft-deleted record (async)."""
+        if not self.soft_delete:
+            return
+        query = f"UPDATE {self.table_name} SET {self.deleted_at_field} = NULL WHERE id = ?"
         conn = await get_async_connection(self.db_path)
         try:
             await conn.execute(query, (record_id,))
@@ -500,13 +569,17 @@ class WSQLite:
     ) -> list[BaseModel]:
         """Get records with pagination (async)."""
         validate_identifier(self.table_name)
+        
+        condition = self._soft_delete_condition()
+        where_clause = f" WHERE {condition}" if condition else ""
+        
         if order_by:
             validate_identifier(order_by)
             order_clause = f" ORDER BY {order_by} {'DESC' if order_desc else 'ASC'}"
         else:
             order_clause = ""
 
-        query = f"SELECT * FROM {self.table_name}{order_clause} LIMIT ? OFFSET ?"
+        query = f"SELECT * FROM {self.table_name}{where_clause}{order_clause} LIMIT ? OFFSET ?"
 
         conn = await get_async_connection(self.db_path)
         try:
@@ -515,15 +588,7 @@ class WSQLite:
         finally:
             await conn.close()
 
-        return [
-            self.model(
-                **{
-                    key: (value if value is not None else self._default_value(key))
-                    for key, value in zip(self.model.model_fields.keys(), row)
-                }
-            )
-            for row in rows
-        ]
+        return [self._load(row) for row in rows]
 
     async def get_page_async(self, page: int = 1, per_page: int = 10) -> list[BaseModel]:
         """Get records by page number (async)."""
@@ -537,7 +602,10 @@ class WSQLite:
     async def count_async(self) -> int:
         """Get total number of records in the table (async)."""
         validate_identifier(self.table_name)
-        query = f"SELECT COUNT(*) FROM {self.table_name}"
+        condition = self._soft_delete_condition()
+        where_clause = f" WHERE {condition}" if condition else ""
+        
+        query = f"SELECT COUNT(*) FROM {self.table_name}{where_clause}"
         conn = await get_async_connection(self.db_path)
         try:
             cursor = await conn.execute(query)
@@ -551,7 +619,10 @@ class WSQLite:
         if not data_list:
             return
 
-        data_dicts = [data.model_dump() for data in data_list]
+        for data in data_list:
+            self._call_hook(data, "pre_save")
+
+        data_dicts = [self._dump(data) for data in data_list]
         fields = ", ".join(data_dicts[0].keys())
         placeholders = ", ".join(["?"] * len(data_dicts[0]))
 
@@ -566,10 +637,16 @@ class WSQLite:
         finally:
             await conn.close()
 
+        for data in data_list:
+            self._call_hook(data, "post_save")
+
     async def update_many_async(self, updates: list[tuple[BaseModel, int]]) -> int:
         """Update multiple records (async)."""
         if not updates:
             return 0
+
+        for data, _ in updates:
+            self._call_hook(data, "pre_save")
 
         validate_identifier(self.table_name)
         total_updated = 0
@@ -577,7 +654,7 @@ class WSQLite:
         conn = await get_async_connection(self.db_path)
         try:
             for data, record_id in updates:
-                data_dict = data.model_dump()
+                data_dict = self._dump(data)
                 fields = ", ".join(f"{key} = ?" for key in data_dict)
                 values = tuple(data_dict.values()) + (record_id,)
                 query = f"UPDATE {self.table_name} SET {fields} WHERE id = ?"
@@ -587,20 +664,31 @@ class WSQLite:
         finally:
             await conn.close()
 
+        for data, _ in updates:
+            self._call_hook(data, "post_save")
+
         return total_updated
 
     async def delete_many_async(self, record_ids: list[int]) -> int:
-        """Delete multiple records by their IDs (async)."""
+        """Delete multiple records by their IDs (async, hard or soft)."""
         if not record_ids:
             return 0
 
         validate_identifier(self.table_name)
 
+        if self.soft_delete:
+            from datetime import datetime
+            now = datetime.now().isoformat()
+            query = f"UPDATE {self.table_name} SET {self.deleted_at_field} = ? WHERE id = ?"
+            params = [(now, rid) for rid in record_ids]
+        else:
+            query = f"DELETE FROM {self.table_name} WHERE id = ?"
+            params = [(rid,) for rid in record_ids]
+
         conn = await get_async_connection(self.db_path)
         try:
-            for record_id in record_ids:
-                query = f"DELETE FROM {self.table_name} WHERE id = ?"
-                await conn.execute(query, (record_id,))
+            for p in params:
+                await conn.execute(query, p)
             await conn.commit()
         finally:
             await conn.close()

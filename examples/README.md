@@ -21,6 +21,13 @@ Usage examples demonstrating wsqlite library functionality.
 | [13_autoid/](13_autoid/) | Auto-incrementing IDs |
 | [14_advance_restrictions/](14_advance_restrictions/) | Composite unique constraints |
 | [15_foreign_keys/](15_foreign_keys/) | Foreign key relationships |
+| [16_v15_features/](16_v15_features/) | v1.5.0 Overview: Complex types, Mixins, Soft Delete |
+| [17_json_support/](17_json_support/) | JSON serialization for dict/list types |
+| [18_lifecycle_hooks/](18_lifecycle_hooks/) | Lifecycle Hooks (pre_save, post_save) |
+| [19_soft_delete/](19_soft_delete/) | Native Soft Delete and Restore |
+| [20_mixins/](20_mixins/) | Utility Mixins (Timestamp, SoftDelete, Audit) |
+| [21_custom_table_name/](21_custom_table_name/) | Custom table names for Pydantic models |
+| [22_auto_indexes/](22_auto_indexes/) | Declarative automatic indexes |
 
 ## Running Examples
 

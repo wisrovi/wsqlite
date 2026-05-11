@@ -2,6 +2,12 @@
 
 import logging
 from typing import Any, get_args, get_origin, Union
+from datetime import datetime, date
+from uuid import UUID
+try:
+    from decimal import Decimal
+except ImportError:
+    Decimal = float
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +24,8 @@ def get_sql_type(field: Any) -> str:
     - int -> INTEGER
     - str -> TEXT
     - bool -> INTEGER (SQLite uses 0/1)
+    - float/Decimal -> REAL
+    - dict/list/datetime/UUID -> TEXT
 
     Supports constraints via field description:
     - "primary" -> PRIMARY KEY
@@ -36,9 +44,26 @@ def get_sql_type(field: Any) -> str:
         args = [arg for arg in args if arg is not type(None)]
         if args:
             annotation = args[0]
+            origin = get_origin(annotation)
 
-    type_mapping = {int: "INTEGER", str: "TEXT", bool: "INTEGER"}
-    sql_type = type_mapping.get(annotation, "TEXT")
+    # Handle generic types like dict[str, Any] or list[int]
+    base_type = origin if origin is not None else annotation
+
+    type_mapping = {
+        int: "INTEGER", 
+        str: "TEXT", 
+        bool: "INTEGER",
+        float: "REAL",
+        Decimal: "REAL",
+        datetime: "TEXT",
+        date: "TEXT",
+        UUID: "TEXT",
+        dict: "TEXT",
+        list: "TEXT",
+    }
+    
+    # Fallback to TEXT if not in mapping
+    sql_type = type_mapping.get(base_type, "TEXT")
 
     constraints = []
     description = (field.description or "").lower()

@@ -204,20 +204,23 @@ class TestTableSync:
             name: str
             email: str = ""
 
-        sync = TableSync(OldModel, db_path)
+        # Usar el mismo nombre de tabla para ambos
+        table_name = "sync_test"
+
+        sync = TableSync(OldModel, db_path, table_name=table_name)
         sync.drop_table()
         sync.create_if_not_exists()
 
-        db1 = WSQLite(OldModel, db_path)
+        db1 = WSQLite(OldModel, db_path, table_name=table_name)
         db1.insert(OldModel(id=1, name="Test"))
 
-        sync.sync_with_model()
+        # WSQLite(NewModel) hará la sincronización automáticamente al iniciarse
+        db2 = WSQLite(NewModel, db_path, table_name=table_name)
 
-        db2 = WSQLite(NewModel, db_path)
-
-        # Table should have email column now
+        # La tabla debe tener la columna email ahora
         users = db2.get_all()
         assert len(users) >= 1
+        assert hasattr(users[0], "email")
 
     def test_get_columns(self, db_path):
         close_pool()

@@ -24,6 +24,7 @@ Connection Pooling:
 """
 
 from wsqlite.builders import QueryBuilder
+from wsqlite.models import AuditMixin, SoftDeleteMixin, TimestampMixin
 from wsqlite.core.connection import (
     AsyncTransaction,
     Transaction,
@@ -59,7 +60,7 @@ from wsqlite.exceptions import (
     TimeoutError,
 )
 
-__version__ = "1.2.2"
+__version__ = "1.2.3"
 
 WSQLite = WSQLiteImpl
 

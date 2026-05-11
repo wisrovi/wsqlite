@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.3] - 2026-05-11
+
+### Changed
+- **Dependency Injection**: Refactored `WSQLite.__init__` to accept optional `pool` and `sync_handler` arguments. This allows for greater flexibility and customization by enabling users to inject their own connection management or table synchronization logic.
+
+### Fixed
+- Addressed a design limitation that prevented subclassing or wrapping `WSQLite` with custom connection strategies.
+
 ## [1.2.2] - 2026-05-11
 
 ### Added

@@ -18,16 +18,17 @@ def validate_identifier(identifier: str) -> None:
 class TableSync:
     """Handles table synchronization between Pydantic models and SQLite (sync)."""
 
-    def __init__(self, model, db_path: str):
+    def __init__(self, model, db_path: str, table_name: Optional[str] = None):
         """Initialize table sync.
 
         Args:
             model: Pydantic BaseModel class.
             db_path: Path to SQLite database file.
+            table_name: Optional custom table name.
         """
         self.model = model
         self.db_path = db_path
-        self.table_name = model.__name__.lower()
+        self.table_name = table_name or model.__name__.lower()
 
     def create_if_not_exists(self):
         """Create the table if it doesn't exist."""
@@ -73,6 +74,13 @@ class TableSync:
         with get_connection(self.db_path) as conn:
             conn.execute(query)
             conn.commit()
+
+        # Auto-create indexes
+        for field_name, field in self.model.model_fields.items():
+            description = (field.description or "").lower()
+            if "index" in description:
+                unique = "unique" in description and "unique:" not in description
+                self.create_index([field_name], unique=unique)
 
     def sync_with_model(self):
         """Sync the table with the Pydantic model, adding new columns if necessary."""
@@ -159,11 +167,11 @@ class TableSync:
 class AsyncTableSync:
     """Handles table synchronization between Pydantic models and SQLite (async)."""
 
-    def __init__(self, model, db_path: str):
+    def __init__(self, model, db_path: str, table_name: Optional[str] = None):
         """Initialize async table sync."""
         self.model = model
         self.db_path = db_path
-        self.table_name = model.__name__.lower()
+        self.table_name = table_name or model.__name__.lower()
 
     async def create_if_not_exists_async(self):
         """Create the table if it doesn't exist (async)."""
@@ -208,6 +216,13 @@ class AsyncTableSync:
             await conn.commit()
         finally:
             await conn.close()
+
+        # Auto-create indexes
+        for field_name, field in self.model.model_fields.items():
+            description = (field.description or "").lower()
+            if "index" in description:
+                unique = "unique" in description and "unique:" not in description
+                await self.create_index_async([field_name], unique=unique)
 
     async def sync_with_model_async(self):
         """Sync the table with the Pydantic model, adding new columns if necessary (async)."""
