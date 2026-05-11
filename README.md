@@ -1,6 +1,6 @@
-# wsqlite
+# wsqlite 🚀
 
-**SQLite ORM using Pydantic models - simple, type-safe, high-performance SQLite operations**
+**SQLite ORM using Pydantic models - Simple, Type-Safe, and High-Performance.**
 
 <p align="center">
     <a href="https://pypi.org/project/wsqlite/">
@@ -12,34 +12,36 @@
     <a href="https://github.com/wisrovi/wsqlite/blob/main/LICENSE">
         <img src="https://img.shields.io/pypi/l/wsqlite.svg" alt="License">
     </a>
+    <a href="https://wsqlite.readthedocs.io/">
+        <img src="https://img.shields.io/readthedocs/wsqlite.svg" alt="Docs">
+    </a>
 </p>
 
-High-level Python ORM library that provides a clean, type-safe interface for SQLite database operations using Pydantic models for schema definition.
+---
 
-## 🚀 Key Features
+`wsqlite` is a high-level Python ORM library that provides a clean, type-safe interface for SQLite database operations. By leveraging **Pydantic v2**, it ensures data integrity and offers a modern development experience with automatic schema synchronization and full async support.
 
-- **🔗 Pydantic Integration** - Define database schema using Pydantic v2 models
-- **🔄 Auto Table Creation** - Tables created/synchronized automatically with model changes
-- **⚡ Connection Pooling** - High-performance thread-safe connection pool with WAL mode
-- **📝 CRUD Operations** - Simple insert, get, update, delete methods
-- **🔍 Column Sync** - Automatically adds new columns when model changes
-- **🔒 Constraints Support** - Primary Key, UNIQUE, NOT NULL, Foreign Keys
-- **🛡️ Type Safety** - Full type hints and Pydantic validation
-- **⚡ Async Support** - Full async/await for high-performance applications
-- **🔨 Query Builder** - Safe query construction with SQL injection prevention
-- **📊 Advanced Query Builder** - JOINs, GROUP BY, HAVING, UNION support
-- **🔄 Migrations** - Version-based schema migration system
-- **🧪 Stress Testing** - Built-in benchmarks and performance testing
-- **💻 CLI Tool** - Command-line interface for common operations
-- **🏆 Battle Tested** - Comprehensive unit and integration tests
+## 🌟 Key Features
 
-## 📊 Performance
+- **🔗 Pydantic Integration** - Define your database schema using standard Pydantic v2 models.
+- **🔄 Auto Schema Sync** - Tables are created and synchronized automatically when your models change.
+- **⚡ Connection Pooling** - High-performance, thread-safe connection pool with WAL mode enabled by default.
+- **📝 Intuitive CRUD** - Simple methods for `insert`, `get`, `update`, and `delete`.
+- **🔍 Smart Migration** - Automatically adds new columns when detected in the model.
+- **🔒 Advanced Constraints** - Native support for Primary Keys, UNIQUE (single & composite), NOT NULL, and Foreign Keys.
+- **🛡️ Type Safety** - Full type hints and runtime validation powered by Pydantic.
+- **⚡ Async Ready** - Full `async/await` support for high-performance applications.
+- **🔨 Query Builders** - Safe, fluent API for complex queries with JOINs, GROUP BY, and more.
+- **🔄 Versioned Migrations** - Robust system for schema versioning and upgrades/rollbacks.
+- **🧪 Battle Tested** - 300+ tests and built-in stress testing/benchmarking tools.
 
-```
-🏆 wSQLite (Pool) Benchmark Results:
-   Ops/sec: ~5,000+ insertions/second
-   Latency: ~0.2ms average
-   Memory:  <10MB overhead
+## 📊 Performance at a Glance
+
+```text
+🏆 wSQLite Benchmark Results:
+   - Throughput: ~5,000+ insertions/second
+   - Latency: ~0.2ms average
+   - Footprint: <10MB memory overhead
 ```
 
 ## 📦 Installation
@@ -48,251 +50,100 @@ High-level Python ORM library that provides a clean, type-safe interface for SQL
 pip install wsqlite
 ```
 
-Development installation with dev tools:
+For development or benchmarking:
 ```bash
-pip install -e ".[dev]"
+pip install -e ".[dev,benchmark,stress]"
 ```
 
-With benchmarking tools:
-```bash
-pip install -e ".[benchmark,stress]"
-```
+## 🚀 Quick Start in 60 Seconds
 
-## 🚀 Quick Start
-
-### Basic Usage
-```python
-from pydantic import BaseModel
-from wsqlite import WSQLite
-
-class User(BaseModel):
-    id: int
-    name: str
-    email: str
-
-# Create database - table is created automatically
-db = WSQLite(User, "database.db")
-
-# Insert data
-db.insert(User(id=1, name="John", email="john@example.com"))
-
-# Query data
-users = db.get_all()
-john = db.get_by_field(name="John")
-
-# Update and delete
-db.update(1, User(id=1, name="Johnny", email="johnny@example.com"))
-db.delete(1)
-```
-
-### With Connection Pooling
-```python
-from wsqlite import WSQLite
-
-db = WSQLite(User, "database.db", pool_size=20, min_pool_size=2)
-```
-
-### Async Operations
-```python
-import asyncio
-from wsqlite import WSQLite
-
-async def main():
-    db = WSQLite(User, "database.db")
-    await db.insert_async(User(id=1, name="John", email="john@example.com"))
-    users = await db.get_all_async()
-
-asyncio.run(main())
-```
-
-### Advanced Query Builder
-```python
-from wsqlite.builders import AdvancedQueryBuilder
-
-results = (
-    AdvancedQueryBuilder("users")
-    .select("id", "name", "email")
-    .join("orders", "users.id = orders.user_id", "LEFT")
-    .where("status", "=", "active")
-    .group_by("users.id")
-    .having("COUNT(orders.id)", ">", 5)
-    .order_by("users.name")
-    .limit(100)
-    .execute(conn)
-)
-```
-
-### Database Migrations
-```python
-from wsqlite import WSQLite
-from wsqlite.migrations import MigrationManager
-
-manager = MigrationManager("app.db")
-
-@manager.migration(1, "Create initial schema")
-def m1(ctx):
-    ctx.execute("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT)")
-
-manager.migrate_up()
-```
-
-## 🧪 Testing
-
-Run tests:
-```bash
-pytest
-```
-
-Run stress tests:
-```bash
-python -m stress_test.run --scenario concurrent --records 100000 --threads 50
-```
-
-Run benchmarks:
-```bash
-python -m benchmark.run --all --report html
-```
-
-## 📁 Project Structure
-
-```
-wsqlite/
-├── src/wsqlite/           # Main library
-│   ├── __init__.py
-│   ├── core/             # Core database operations
-│   │   ├── connection.py # Connection management
-│   │   ├── pool.py       # Connection pooling
-│   │   ├── repository.py # CRUD operations
-│   │   └── sync.py       # Table sync
-│   ├── builders/          # Query builders
-│   ├── exceptions.py      # Custom exceptions
-│   ├── migrations.py      # Schema migrations
-│   ├── types/            # SQL type mapping
-│   ├── validators.py      # Type validation
-│   └── cli/              # CLI tool
-├── examples/              # Usage examples
-├── test/                 # Test suite
-├── stress_test/          # Stress testing
-├── benchmark/            # Benchmarking
-└── pyproject.toml
-```
-
-## 🎯 Advanced Features
-
-### Auto-incrementing IDs
-To define an auto-incrementing primary key, use `Optional[int]` with `Field(description="primary autoincrement")`:
+### Define and Insert
 ```python
 from typing import Optional
 from pydantic import BaseModel, Field
+from wsqlite import WSQLite
 
 class User(BaseModel):
     id: Optional[int] = Field(None, description="primary autoincrement")
     name: str
+    email: str = Field(..., description="unique")
 
-# When inserting, skip the id field or set it to None
-db.insert(User(name="Alice"))
+# Initializing creates the table automatically
+db = WSQLite(User, "app.db")
+
+# Type-safe insertion
+db.insert(User(name="John Doe", email="john@example.com"))
+
+# Easy querying
+users = db.get_all()
+john = db.get_by_field(email="john@example.com")
 ```
 
-### Composite Unique Constraints
-To define a unique constraint across multiple columns, use `unique:group_name` in the field descriptions:
+### Async Operations
 ```python
-class User(BaseModel):
-    name: str = Field(..., description="unique:name_lastname")
-    lastname: str = Field(..., description="unique:name_lastname")
+async def main():
+    await db.insert_async(User(name="Jane Doe", email="jane@example.com"))
+    users = await db.get_all_async()
+```
 
-# (name, lastname) must be unique together
+## 🎯 Advanced Functionality
+
+### Composite Unique Constraints
+```python
+class Profile(BaseModel):
+    username: str = Field(..., description="unique:account")
+    provider: str = Field(..., description="unique:account")
+# (username, provider) must be unique together
 ```
 
 ### Foreign Keys
-To define a foreign key relationship, use `references:table.column`:
 ```python
-class Book(BaseModel):
+class Post(BaseModel):
     title: str
-    author_id: int = Field(..., description="references:author.id")
-
-# Foreign key enforcement is enabled by default
+    author_id: int = Field(..., description="references:user.id")
 ```
 
-### Connection Pool
+### Powerful Query Builder
 ```python
-from wsqlite import ConnectionPool, WSQLite
+from wsqlite.builders import QueryBuilder
 
-pool = ConnectionPool("app.db", min_size=2, max_size=20)
-db = WSQLite(User, "app.db", pool_size=10)
-
-# Use pool directly
-with pool.connection() as conn:
-    cursor = conn.execute("SELECT * FROM users")
-```
-
-### Transactions
-```python
-from wsqlite import WSQLite
-
-db = WSQLite(User, "database.db")
-
-# Simple transaction
-db.execute_transaction([
-    ("INSERT INTO users VALUES (?, ?)", (1, "John")),
-    ("INSERT INTO orders VALUES (?, ?)", (1, 100)),
-])
-
-# Function-based transaction
-result = db.with_transaction(lambda txn: txn.execute("SELECT COUNT(*) FROM users"))
-```
-
-### Bulk Operations
-```python
-# Bulk insert
-users = [User(id=i, name=f"User{i}", email=f"user{i}@test.com") for i in range(10000)]
-db.insert_many(users)
-
-# Bulk update
-updates = [(User(id=i, name=f"Updated{i}", email=f"updated{i}@test.com"), i) for i in range(100)]
-db.update_many(updates)
-```
-
-## 🔧 Configuration
-
-### Environment Variables
-- `WSQLITE_DB_PATH` - Default database path
-- `WSQLITE_LOG_LEVEL` - Logging level (default: INFO)
-
-### Pool Configuration
-```python
-db = WSQLite(
-    User, 
-    "database.db",
-    pool_size=20,      # Max connections
-    min_pool_size=2,   # Min connections
-    use_pool=True       # Enable pooling
+results = (
+    QueryBuilder("users")
+    .select("id", "name")
+    .join("orders", "users.id = orders.user_id", "LEFT")
+    .where("status", "=", "active")
+    .group_by("users.id")
+    .having("COUNT(orders.id)", ">", 5)
+    .execute(conn)
 )
 ```
 
+## 📁 Project Structure
+
+- `src/wsqlite/`: Core library logic.
+- `examples/`: Comprehensive usage examples (CRUD, Transactions, Relationships, etc.).
+- `test/`: Full unit and integration test suite.
+- `benchmark/`: Performance testing tools.
+
+## 🧪 Testing & Quality
+
+We maintain high standards with extensive testing:
+```bash
+# Run unit tests
+pytest
+
+# Run stress tests
+python -m stress_test.run --scenario concurrent --records 100000
+```
+
 ## 📈 Version History
+- **v1.2.2** - Added Composite Uniques, Foreign Keys, and Autoid support. Fixed transaction bugs.
+- **v1.2.0** - 90%+ test coverage, async connection pool.
+- **v1.1.0** - Connection pooling, advanced query builder, migrations.
 
-- **v1.2.0** - 90%+ test coverage, async connection pool, comprehensive testing suite
-- **v1.1.0** - Connection pooling, advanced query builder, migrations, stress testing
-- **v1.0.0** - Initial stable release
+## 📝 License & Author
 
-## 🧪 Test Coverage
+Distributed under the **MIT License**. Created with ❤️ by **William Steve Rodriguez Villamizar**.
 
-```bash
-317 tests | 79% code coverage
-```
-
-Run with coverage:
-```bash
-pytest --cov=wsqlite --cov-report=term-missing
-```
-
-## 📝 License
-
-MIT License - see [LICENSE](LICENSE) file.
-
-## 👤 Author
-
-**William Steve Rodriguez Villamizar**
-- Email: [wisrovi.rodriguez@gmail.com](mailto:wisrovi.rodriguez@gmail.com)
-- GitHub: [wisrovi](https://github.com/wisrovi)
-- LinkedIn: [wisrovi](https://www.linkedin.com/in/wisrovi/)
+- 📧 [wisrovi.rodriguez@gmail.com](mailto:wisrovi.rodriguez@gmail.com)
+- 🔗 [GitHub](https://github.com/wisrovi) | [LinkedIn](https://www.linkedin.com/in/wisrovi/)
