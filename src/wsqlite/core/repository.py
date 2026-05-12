@@ -58,11 +58,13 @@ class WSQLite:
         self,
         model: type[BaseModel],
         db_path: str,
-        pool: Optional[ConnectionPool] = None,
+        pool_size: int = 10,
+        min_pool_size: int = 2,
         use_pool: bool = True,
         table_name: Optional[str] = None,
         soft_delete: bool = False,
         deleted_at_field: str = "deleted_at",
+        pool: Optional[ConnectionPool] = None,
         sync_handler: Optional[TableSync] = None,
     ):
         """Initialize the repository with a Pydantic model.
@@ -70,11 +72,13 @@ class WSQLite:
         Args:
             model: Pydantic BaseModel class defining the table schema.
             db_path: Path to SQLite database file.
-            pool: Optional pre-configured connection pool.
+            pool_size: Maximum number of connections in pool (if pool is not provided).
+            min_pool_size: Minimum number of connections in pool (if pool is not provided).
             use_pool: Whether to use connection pooling (recommended).
             table_name: Optional custom table name.
             soft_delete: Whether to use soft deletes (default False).
             deleted_at_field: Name of the field for soft deletes (default "deleted_at").
+            pool: Optional pre-configured connection pool.
             sync_handler: Optional pre-configured TableSync instance.
         """
         self.model = model
@@ -84,10 +88,17 @@ class WSQLite:
         self.soft_delete = soft_delete
         self.deleted_at_field = deleted_at_field
 
-        if use_pool and pool is None:
-            self._pool = get_pool(db_path)
+        if use_pool:
+            if pool:
+                self._pool = pool
+            else:
+                self._pool = get_pool(
+                    db_path,
+                    min_size=min_pool_size,
+                    max_size=pool_size,
+                )
         else:
-            self._pool = pool
+            self._pool = None
 
         self._sync = sync_handler or TableSync(model, db_path, table_name=self.table_name)
         self._sync.create_if_not_exists()

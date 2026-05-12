@@ -1,0 +1,3 @@
+[wauth]
+db_path = "./wisrovi_wauth.db"
+custom_key = "my-encryption-key"  # Optional

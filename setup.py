@@ -14,11 +14,14 @@ this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
 
 setup(
-    name=config_project["project"]["name"],  # Nombre del paquete en PyPI
+    name=config_project["project"]["name"],
     version=config_project["project"]["version"],
-    packages=find_packages(),
+    package_dir={'': 'src'},
+    packages=find_packages(where='src'),
     install_requires=[
         "loguru>=0.7.0",
+        "pydantic>=2.0",
+        "aiosqlite>=0.17.0",
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
@@ -34,5 +37,5 @@ setup(
     author="William Steve Rodriguez Villamizar",
     author_email="wisrovi.rodriguez@gmail.com",
     license="MIT",
-    python_requires=">=3.6",  # Requiere Python >=3.6 y <3.10
+    python_requires=">=3.9",
 )
