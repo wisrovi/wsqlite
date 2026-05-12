@@ -31,59 +31,70 @@ class TableSync:
         self.table_name = table_name or model.__name__.lower()
 
     def create_if_not_exists(self):
-        """Create the table if it doesn't exist."""
-        column_defs = []
-        composite_uniques = {}  # group_name -> [fields]
-        foreign_keys = []  # [(local_col, ref_table, ref_col)]
+        """Create the table if it doesn't exist, handling FTS5 virtual tables."""
+        config = getattr(self.model, "wsqlite_config", None)
+        use_fts = getattr(config, "use_fts5", False)
 
-        for field_name, field in self.model.model_fields.items():
-            col_type = get_sql_type(field)
-            column_defs.append(f"{field_name} {col_type}")
+        if use_fts:
+            # Handle FTS5 table creation
+            fts_columns = [
+                field_name
+                for field_name, field in self.model.model_fields.items()
+                if get_sql_type(field) == "TEXT"
+            ]
+            if not fts_columns:
+                raise TableSyncError("FTS5 table requires at least one TEXT field.")
+            
+            columns_clause = ", ".join(fts_columns)
+            query = f"CREATE VIRTUAL TABLE IF NOT EXISTS {self.table_name} USING fts5({columns_clause})"
+        else:
+            # Standard table creation
+            column_defs = []
+            composite_uniques = {}
+            foreign_keys = []
 
-            description = (field.description or "").lower()
+            for field_name, field in self.model.model_fields.items():
+                col_type = get_sql_type(field)
+                column_defs.append(f"{field_name} {col_type}")
 
-            # Check for composite unique: unique:group1
-            if "unique:" in description:
-                match = re.search(r"unique:([a-zA-Z0-9_]+)", description)
-                if match:
-                    group = match.group(1)
-                    if group not in composite_uniques:
-                        composite_uniques[group] = []
-                    composite_uniques[group].append(field_name)
+                description = (field.description or "").lower()
+                if "unique:" in description:
+                    match = re.search(r"unique:([a-zA-Z0-9_]+)", description)
+                    if match:
+                        group = match.group(1)
+                        composite_uniques.setdefault(group, []).append(field_name)
+                if "references:" in description:
+                    match = re.search(r"references:([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)", description)
+                    if match:
+                        foreign_keys.append((field_name, match.group(1), match.group(2)))
 
-            # Check for foreign key: references:table.column
-            if "references:" in description:
-                match = re.search(r"references:([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)", description)
-                if match:
-                    ref_table = match.group(1)
-                    ref_col = match.group(2)
-                    foreign_keys.append((field_name, ref_table, ref_col))
+            for fields in composite_uniques.values():
+                column_defs.append(f"UNIQUE({', '.join(fields)})")
+            for local_col, ref_table, ref_col in foreign_keys:
+                column_defs.append(f"FOREIGN KEY({local_col}) REFERENCES {ref_table}({ref_col})")
 
-        # Add composite uniques to column_defs
-        for fields in composite_uniques.values():
-            fields_str = ", ".join(fields)
-            column_defs.append(f"UNIQUE({fields_str})")
+            fields_clause = ", ".join(column_defs)
+            query = f"CREATE TABLE IF NOT EXISTS {self.table_name} ({fields_clause})"
 
-        # Add foreign keys to column_defs
-        for local_col, ref_table, ref_col in foreign_keys:
-            column_defs.append(f"FOREIGN KEY({local_col}) REFERENCES {ref_table}({ref_col})")
-
-        fields_clause = ", ".join(column_defs)
-        query = f"CREATE TABLE IF NOT EXISTS {self.table_name} ({fields_clause})"
-        
         with get_connection(self.db_path) as conn:
             conn.execute(query)
             conn.commit()
 
-        # Auto-create indexes
-        for field_name, field in self.model.model_fields.items():
-            description = (field.description or "").lower()
-            if "index" in description:
-                unique = "unique" in description and "unique:" not in description
-                self.create_index([field_name], unique=unique)
+        # Auto-create indexes for non-FTS tables
+        if not use_fts:
+            for field_name, field in self.model.model_fields.items():
+                description = (field.description or "").lower()
+                if "index" in description:
+                    unique = "unique" in description and "unique:" not in description
+                    self.create_index([field_name], unique=unique)
 
     def sync_with_model(self):
         """Sync the table with the Pydantic model, adding new columns if necessary."""
+        # FTS5 tables cannot be altered
+        config = getattr(self.model, "wsqlite_config", None)
+        if getattr(config, "use_fts5", False):
+            return
+
         query = f"PRAGMA table_info({self.table_name})"
         with get_connection(self.db_path) as conn:
             cursor = conn.execute(query)

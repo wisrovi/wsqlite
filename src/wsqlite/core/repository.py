@@ -234,6 +234,51 @@ class WSQLite:
         query = f"UPDATE {self.table_name} SET {self.deleted_at_field} = NULL WHERE id = ?"
         self._execute(query, (record_id,))
 
+    def load_related(
+        self,
+        instance: BaseModel,
+        attribute_name: str,
+        related_db: "WSQLite",
+        foreign_key: str,
+        local_key: str = "id",
+        is_list: bool = True,
+    ):
+        """Load related data from another table onto a model instance.
+
+        Args:
+            instance: The model instance to enrich.
+            attribute_name: The name of the attribute to set on the instance.
+            related_db: The WSQLite instance for the related table.
+            foreign_key: The foreign key column name on the related table.
+            local_key: The local key column name on the current instance's table.
+            is_list: True for one-to-many relationships, False for many-to-one.
+        """
+        local_value = getattr(instance, local_key)
+        results = related_db.get_by_field(**{foreign_key: local_value})
+
+        if is_list:
+            setattr(instance, attribute_name, results)
+        else:
+            setattr(instance, attribute_name, results[0] if results else None)
+
+    async def load_related_async(
+        self,
+        instance: BaseModel,
+        attribute_name: str,
+        related_db: "WSQLite",
+        foreign_key: str,
+        local_key: str = "id",
+        is_list: bool = True,
+    ):
+        """Load related data from another table onto a model instance (async)."""
+        local_value = getattr(instance, local_key)
+        results = await related_db.get_by_field_async(**{foreign_key: local_value})
+
+        if is_list:
+            setattr(instance, attribute_name, results)
+        else:
+            setattr(instance, attribute_name, results[0] if results else None)
+
     def _default_value(self, field: str) -> Any:
         """Get default value for a field when database value is NULL."""
         field_type = self.model.model_fields[field].annotation
@@ -570,6 +615,33 @@ class WSQLite:
             await conn.commit()
         finally:
             await conn.close()
+
+    async def search_async(self, query: str, order_by_rank: bool = True) -> list[BaseModel]:
+        """Perform a full-text search on an FTS5 table (async).
+
+        Args:
+            query: The search query string.
+            order_by_rank: Whether to sort results by relevance (default True).
+
+        Returns:
+            A list of matching model instances.
+        """
+        config = getattr(self.model, "wsqlite_config", None)
+        if not getattr(config, "use_fts5", False):
+            raise OperationError("Search method is only available for FTS5-enabled models.")
+
+        sql = f"SELECT * FROM {self.table_name} WHERE {self.table_name} MATCH ?"
+        if order_by_rank:
+            sql += " ORDER BY rank"
+
+        conn = await get_async_connection(self.db_path)
+        try:
+            cursor = await conn.execute(sql, (query,))
+            rows = await cursor.fetchall()
+        finally:
+            await conn.close()
+
+        return [self._load(row) for row in rows]
 
     async def get_paginated_async(
         self,

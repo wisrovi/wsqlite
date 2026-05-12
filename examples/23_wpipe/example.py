@@ -7,3 +7,5 @@ from wsqlite import WSQLite as Wsqlite_original
 # Connection pooling for performance optimization
 _db_connections: Dict[str, sqlite3.Connection] = {}
 _db_lock = threading.RLock()
+
+print("=== WPIPE: Connection Pooling Example ===")
