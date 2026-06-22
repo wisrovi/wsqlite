@@ -187,6 +187,7 @@ python -m stress_test.run --scenario concurrent --records 100000
 ```
 
 ## 📈 Version History
+- **v1.2.4** - 337+ tests, 78% coverage. Improved migrations and query builder.
 - **v1.2.2** - Added Composite Uniques, Foreign Keys, and Autoid support. Fixed transaction bugs.
 - **v1.2.0** - 90%+ test coverage, async connection pool.
 - **v1.1.0** - Connection pooling, advanced query builder, migrations.
