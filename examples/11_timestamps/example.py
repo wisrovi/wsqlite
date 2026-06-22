@@ -48,5 +48,5 @@ print(f"Updated: created={updated.created_at}, updated={updated.updated_at}")
 if updated.updated_at > updated.created_at:
     print("\n✅ Éxito: El timestamp de 'updated_at' es posterior al de 'created_at'")
 
-os.remove(DB_PATH)
+# os.remove(DB_PATH)
 print("\nDone!")
