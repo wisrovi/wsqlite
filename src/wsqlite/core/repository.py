@@ -14,10 +14,10 @@ from wsqlite.core.connection import (
     get_transaction,
     retry_on_lock,
 )
-from wsqlite.core.pool import ConnectionPool, get_pool, close_pool
-from wsqlite.core.serialization import serialize_value, deserialize_value
-from wsqlite.core.sync import AsyncTableSync, TableSync
-from wsqlite.exceptions import DatabaseLockedError, SQLInjectionError, TransactionError
+from wsqlite.core.pool import ConnectionPool, get_pool
+from wsqlite.core.serialization import deserialize_value, serialize_value
+from wsqlite.core.sync import TableSync
+from wsqlite.exceptions import SQLInjectionError, TransactionError
 
 logger = logging.getLogger(__name__)
 
@@ -35,29 +35,29 @@ def validate_identifier(identifier: str) -> None:
         raise SQLInjectionError(identifier)
 
 
+from datetime import datetime, timezone
+from typing import Any, Callable, Optional, Union
+
+
+class ForensicModel(BaseModel):
+    """Base Pydantic model with forensic audit fields for WSQLite."""
+
+    create_by: Optional[int] = 1
+    create_in: Optional[datetime] = None
+    update_by: Optional[int] = None
+    update_in: Optional[datetime] = None
+    delete_by: Optional[int] = None
+    delete_in: Optional[datetime] = None
+    status: int = 1
+
+
 class WSQLite:
-    """SQLite repository using Pydantic models.
-
-    Provides a simple interface for CRUD operations on SQLite tables,
-    with automatic table creation, schema synchronization, and connection pooling.
-
-    Example:
-        from pydantic import BaseModel
-        from wsqlite import WSQLite
-
-        class User(BaseModel):
-            id: int
-            name: str
-            email: str
-
-        db = WSQLite(User, "database.db")
-        db.insert(User(id=1, name="John", email="john@example.com"))
-    """
+    """SQLite repository using Pydantic models with multi-table and forensic support."""
 
     def __init__(
         self,
-        model: type[BaseModel],
-        db_path: str,
+        target: Optional[Union[type[BaseModel], list[type[BaseModel]], tuple[type[BaseModel], ...], str, dict]] = None,
+        db_path: Optional[str] = None,
         pool_size: int = 10,
         min_pool_size: int = 2,
         use_pool: bool = True,
@@ -66,47 +66,127 @@ class WSQLite:
         deleted_at_field: str = "deleted_at",
         pool: Optional[ConnectionPool] = None,
         sync_handler: Optional[TableSync] = None,
+        forensic: Optional[bool] = None,
+        models: Optional[Union[list[type[BaseModel]], tuple[type[BaseModel], ...]]] = None,
+        model: Optional[type[BaseModel]] = None,
     ):
-        """Initialize the repository with a Pydantic model.
+        resolved_db_path = db_path
+        resolved_models: Optional[list[type[BaseModel]]] = list(models) if models is not None else None
+        resolved_model: Optional[type[BaseModel]] = model
 
-        Args:
-            model: Pydantic BaseModel class defining the table schema.
-            db_path: Path to SQLite database file.
-            pool_size: Maximum number of connections in pool (if pool is not provided).
-            min_pool_size: Minimum number of connections in pool (if pool is not provided).
-            use_pool: Whether to use connection pooling (recommended).
-            table_name: Optional custom table name.
-            soft_delete: Whether to use soft deletes (default False).
-            deleted_at_field: Name of the field for soft deletes (default "deleted_at").
-            pool: Optional pre-configured connection pool.
-            sync_handler: Optional pre-configured TableSync instance.
-        """
-        self.model = model
-        self.db_path = db_path
-        self.table_name = table_name or model.__name__.lower()
+        if isinstance(target, str) and resolved_db_path is None:
+            resolved_db_path = target
+        elif isinstance(target, dict) and resolved_db_path is None:
+            resolved_db_path = target.get("db_path") or target.get("database") or "sqlite.db"
+        elif isinstance(target, (list, tuple)):
+            resolved_models = list(target)
+        elif isinstance(target, type) and issubclass(target, BaseModel):
+            resolved_model = target
+
+        if resolved_db_path is None:
+            resolved_db_path = "sqlite.db"
+
+        self.db_path = resolved_db_path
         self.use_pool = use_pool
         self.soft_delete = soft_delete
         self.deleted_at_field = deleted_at_field
+        self.forensic_setting = forensic
+
+        self._repositories: dict[Union[type[BaseModel], str], "WSQLite"] = {}
+        self._repositories_by_name: dict[str, "WSQLite"] = {}
 
         if use_pool:
-            if pool:
-                self._pool = pool
-            else:
-                self._pool = get_pool(
-                    db_path,
-                    min_size=min_pool_size,
-                    max_size=pool_size,
-                )
+            self._pool = pool or get_pool(resolved_db_path, min_size=min_pool_size, max_size=pool_size)
         else:
             self._pool = None
 
-        self._sync = sync_handler or TableSync(model, db_path, table_name=self.table_name)
-        self._sync.create_if_not_exists()
-        self._sync.sync_with_model()
+        if resolved_models is not None:
+            self.is_multi_table = True
+            self.model = None
+            self.table_name = None
+            self.forensic = False
+            self._sync = None
+            for m in resolved_models:
+                self.register_model(m)
+        elif resolved_model is not None:
+            self.is_multi_table = False
+            self.model = resolved_model
+            self.table_name = table_name or getattr(resolved_model, "__tablename__", resolved_model.__name__.lower())
 
-        logger.info(
-            f"WSQLite initialized for table '{self.table_name}' (pool={use_pool}, size={pool_size}, soft_delete={soft_delete})"
+            if forensic is None:
+                self.forensic = (
+                    issubclass(resolved_model, ForensicModel)
+                    if isinstance(resolved_model, type) and issubclass(resolved_model, BaseModel)
+                    else False
+                )
+            else:
+                self.forensic = forensic
+
+            self._sync = sync_handler or TableSync(resolved_model, resolved_db_path, table_name=self.table_name, forensic=self.forensic)
+            self._sync.create_if_not_exists()
+            self._sync.sync_with_model()
+            self._register_repository_references(resolved_model, self)
+        else:
+            self.is_multi_table = True
+            self.model = None
+            self.table_name = None
+            self.forensic = bool(forensic)
+            self._sync = None
+
+    def register_model(
+        self, model: type[BaseModel], forensic: Optional[bool] = None
+    ) -> "WSQLite":
+        use_forensic = forensic if forensic is not None else self.forensic_setting
+        repo = WSQLite(
+            model=model,
+            db_path=self.db_path,
+            use_pool=self.use_pool,
+            pool=self._pool,
+            forensic=use_forensic,
         )
+        self._register_repository_references(model, repo)
+        return repo
+
+    def _register_repository_references(
+        self, model: type[BaseModel], repo: "WSQLite"
+    ) -> None:
+        table_name = getattr(model, "__tablename__", model.__name__.lower())
+        model_name = model.__name__.lower()
+
+        self._repositories[model] = repo
+        self._repositories[model_name] = repo
+        self._repositories[table_name] = repo
+        self._repositories_by_name[model_name] = repo
+        self._repositories_by_name[table_name] = repo
+
+    def __getitem__(self, item: Union[type[BaseModel], str]) -> "WSQLite":
+        if isinstance(item, type) and issubclass(item, BaseModel):
+            if item in self._repositories:
+                return self._repositories[item]
+        elif isinstance(item, str):
+            item_lower = item.lower()
+            if item_lower in self._repositories:
+                return self._repositories[item_lower]
+
+        if not self.is_multi_table and self.model:
+            if item == self.model or (
+                isinstance(item, str)
+                and item.lower() in (self.table_name, self.model.__name__.lower())
+            ):
+                return self
+
+        raise KeyError(f"Model or table '{item}' is not registered in WSQLite registry.")
+
+    def __getattr__(self, name: str) -> Any:
+        if name.startswith("_"):
+            raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+
+        repositories = getattr(self, "_repositories_by_name", {})
+        name_lower = name.lower()
+        if name_lower in repositories:
+            return repositories[name_lower]
+
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
 
     def _call_hook(self, instance: Any, hook_name: str, *args, **kwargs) -> None:
         """Call a hook method on the model instance if it exists."""
@@ -130,7 +210,7 @@ class WSQLite:
 
     def _dump(self, data: BaseModel) -> dict:
         """Serialize a model instance to a dictionary for SQLite insertion."""
-        data_dict = data.model_dump(mode='json')
+        data_dict = data.model_dump(mode="json")
         for key, val in data_dict.items():
             if key in self.model.model_fields:
                 annotation = self.model.model_fields[key].annotation
@@ -142,7 +222,11 @@ class WSQLite:
         data = {}
         for key, value in zip(self.model.model_fields.keys(), row):
             annotation = self.model.model_fields[key].annotation
-            val = deserialize_value(value, annotation) if value is not None else self._default_value(key)
+            val = (
+                deserialize_value(value, annotation)
+                if value is not None
+                else self._default_value(key)
+            )
             data[key] = val
         return self.model(**data)
 
@@ -172,7 +256,7 @@ class WSQLite:
     def insert(self, data: BaseModel) -> None:
         """Insert a new record into the database."""
         self._call_hook(data, "pre_save")
-        
+
         data_dict = self._dump(data)
         fields = ", ".join(data_dict.keys())
         placeholders = ", ".join(["?"] * len(data_dict))
@@ -180,7 +264,7 @@ class WSQLite:
 
         query = f"INSERT INTO {self.table_name} ({fields}) VALUES ({placeholders})"
         self._execute(query, values)
-        
+
         self._call_hook(data, "post_save")
 
     def get_all(self) -> list[BaseModel]:
@@ -196,7 +280,7 @@ class WSQLite:
         conditions_list = [f"{key} = ?" for key in filters]
         conditions = " AND ".join(conditions_list)
         conditions = self._add_soft_delete_filter(conditions)
-        
+
         where_clause = f" WHERE {conditions}" if conditions else ""
         values = tuple(filters.values())
         query = f"SELECT * FROM {self.table_name}{where_clause}"
@@ -207,7 +291,7 @@ class WSQLite:
     def update(self, record_id: int, data: BaseModel) -> None:
         """Update a record in the database."""
         self._call_hook(data, "pre_save")
-        
+
         data_dict = self._dump(data)
         fields = ", ".join(f"{key} = ?" for key in data_dict.keys())
         values = tuple(data_dict.values()) + (record_id,)
@@ -220,6 +304,7 @@ class WSQLite:
         """Delete a record from the database (hard or soft)."""
         if self.soft_delete:
             from datetime import datetime
+
             now = datetime.now().isoformat()
             query = f"UPDATE {self.table_name} SET {self.deleted_at_field} = ? WHERE id = ?"
             self._execute(query, (now, record_id))
@@ -299,10 +384,10 @@ class WSQLite:
     ) -> list[BaseModel]:
         """Get records with pagination."""
         validate_identifier(self.table_name)
-        
+
         condition = self._soft_delete_condition()
         where_clause = f" WHERE {condition}" if condition else ""
-        
+
         if order_by:
             validate_identifier(order_by)
             order_clause = f" ORDER BY {order_by} {'DESC' if order_desc else 'ASC'}"
@@ -335,7 +420,7 @@ class WSQLite:
         validate_identifier(self.table_name)
         condition = self._soft_delete_condition()
         where_clause = f" WHERE {condition}" if condition else ""
-        
+
         query = f"SELECT COUNT(*) FROM {self.table_name}{where_clause}"
         result = self._execute(query, commit=False)
         return result[0][0] if result else 0
@@ -370,7 +455,7 @@ class WSQLite:
                     values = tuple(data_dict.values())
                     txn.execute(query, values)
                 txn.commit()
-        
+
         for data in data_list:
             self._call_hook(data, "post_save")
 
@@ -434,6 +519,7 @@ class WSQLite:
 
         if self.soft_delete:
             from datetime import datetime
+
             now = datetime.now().isoformat()
             query = f"UPDATE {self.table_name} SET {self.deleted_at_field} = ? WHERE id = ?"
             params = [(now, rid) for rid in record_ids]
@@ -519,7 +605,7 @@ class WSQLite:
     async def insert_async(self, data: BaseModel) -> None:
         """Insert a new record into the database (async)."""
         self._call_hook(data, "pre_save")
-        
+
         data_dict = self._dump(data)
         fields = ", ".join(data_dict.keys())
         placeholders = ", ".join(["?"] * len(data_dict))
@@ -532,7 +618,7 @@ class WSQLite:
             await conn.commit()
         finally:
             await conn.close()
-            
+
         self._call_hook(data, "post_save")
 
     async def get_all_async(self) -> list[BaseModel]:
@@ -554,7 +640,7 @@ class WSQLite:
         conditions_list = [f"{key} = ?" for key in filters]
         conditions = " AND ".join(conditions_list)
         conditions = self._add_soft_delete_filter(conditions)
-        
+
         where_clause = f" WHERE {conditions}" if conditions else ""
         values = tuple(filters.values())
         query = f"SELECT * FROM {self.table_name}{where_clause}"
@@ -571,7 +657,7 @@ class WSQLite:
     async def update_async(self, record_id: int, data: BaseModel) -> None:
         """Update a record in the database (async)."""
         self._call_hook(data, "pre_save")
-        
+
         data_dict = self._dump(data)
         fields = ", ".join(f"{key} = ?" for key in data_dict.keys())
         values = tuple(data_dict.values()) + (record_id,)
@@ -583,20 +669,21 @@ class WSQLite:
             await conn.commit()
         finally:
             await conn.close()
-            
+
         self._call_hook(data, "post_save")
 
     async def delete_async(self, record_id: int) -> None:
         """Delete a record from the database (async, hard or soft)."""
         if self.soft_delete:
             from datetime import datetime
+
             now = datetime.now().isoformat()
             query = f"UPDATE {self.table_name} SET {self.deleted_at_field} = ? WHERE id = ?"
             values = (now, record_id)
         else:
             query = f"DELETE FROM {self.table_name} WHERE id = ?"
             values = (record_id,)
-            
+
         conn = await get_async_connection(self.db_path)
         try:
             await conn.execute(query, values)
@@ -652,10 +739,10 @@ class WSQLite:
     ) -> list[BaseModel]:
         """Get records with pagination (async)."""
         validate_identifier(self.table_name)
-        
+
         condition = self._soft_delete_condition()
         where_clause = f" WHERE {condition}" if condition else ""
-        
+
         if order_by:
             validate_identifier(order_by)
             order_clause = f" ORDER BY {order_by} {'DESC' if order_desc else 'ASC'}"
@@ -687,7 +774,7 @@ class WSQLite:
         validate_identifier(self.table_name)
         condition = self._soft_delete_condition()
         where_clause = f" WHERE {condition}" if condition else ""
-        
+
         query = f"SELECT COUNT(*) FROM {self.table_name}{where_clause}"
         conn = await get_async_connection(self.db_path)
         try:
@@ -761,6 +848,7 @@ class WSQLite:
 
         if self.soft_delete:
             from datetime import datetime
+
             now = datetime.now().isoformat()
             query = f"UPDATE {self.table_name} SET {self.deleted_at_field} = ? WHERE id = ?"
             params = [(now, rid) for rid in record_ids]
