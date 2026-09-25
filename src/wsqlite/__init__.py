@@ -24,7 +24,6 @@ Connection Pooling:
 """
 
 from wsqlite.builders import QueryBuilder
-from wsqlite.models import AuditMixin, SoftDeleteMixin, TimestampMixin
 from wsqlite.core.connection import (
     AsyncTransaction,
     Transaction,
@@ -34,38 +33,25 @@ from wsqlite.core.connection import (
     get_transaction,
     retry_on_lock,
 )
-from wsqlite.core.repository import WSQLite as WSQLiteImpl
-from wsqlite.core.sync import AsyncTableSync, TableSync
 from wsqlite.core.pool import (
-    ConnectionPool,
     AsyncConnectionPool,
-    get_pool,
-    get_async_pool,
-    close_pool,
-    close_async_pool,
+    ConnectionPool,
     close_all_pools,
+    close_async_pool,
+    close_pool,
+    get_async_pool,
+    get_pool,
 )
-from wsqlite.exceptions import (
-    WSQLiteError,
-    ConnectionError,
-    PoolExhaustedError,
-    DatabaseLockedError,
-    TableSyncError,
-    ValidationError,
-    OperationError,
-    SQLInjectionError,
-    TransactionError,
-    MigrationError,
-    QueryError,
-    TimeoutError,
-)
+from wsqlite.core.repository import ForensicModel, WSQLite as WSQLiteImpl
+from wsqlite.core.sync import AsyncTableSync, TableSync
 
-__version__ = "1.2.4"
+__version__ = "1.3.0"
 
 WSQLite = WSQLiteImpl
 
 __all__ = [
     "WSQLite",
+    "ForensicModel",
     "QueryBuilder",
     "Transaction",
     "AsyncTransaction",
