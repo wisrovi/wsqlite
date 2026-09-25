@@ -18,20 +18,46 @@ def validate_identifier(identifier: str) -> None:
 class TableSync:
     """Handles table synchronization between Pydantic models and SQLite (sync)."""
 
-    def __init__(self, model, db_path: str, table_name: Optional[str] = None):
+    def __init__(self, model, db_path: str, table_name: Optional[str] = None, forensic: bool = False):
         """Initialize table sync.
 
         Args:
             model: Pydantic BaseModel class.
             db_path: Path to SQLite database file.
             table_name: Optional custom table name.
+            forensic: Whether forensic ghost audit logging is enabled.
         """
         self.model = model
         self.db_path = db_path
-        self.table_name = table_name or model.__name__.lower()
+        self.table_name = table_name or (model.__name__.lower() if model else "default_table")
+        self.forensic = forensic
+
+    def create_ghost_audit_table(self):
+        query = (
+            "CREATE TABLE IF NOT EXISTS _forensic_audit_log ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "table_name TEXT NOT NULL, "
+            "action_type TEXT NOT NULL, "
+            "record_id TEXT NULL, "
+            "data_before TEXT NULL, "
+            "data_after TEXT NULL, "
+            "create_by INTEGER DEFAULT 1, "
+            "create_in TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "
+            "status INTEGER DEFAULT 1"
+            ")"
+        )
+        with get_connection(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute(query)
+            conn.commit()
 
     def create_if_not_exists(self):
         """Create the table if it doesn't exist, handling FTS5 virtual tables."""
+        if self.forensic:
+            self.create_ghost_audit_table()
+
+        if not self.model:
+            return
         config = getattr(self.model, "wsqlite_config", None)
         use_fts = getattr(config, "use_fts5", False)
 
@@ -44,9 +70,11 @@ class TableSync:
             ]
             if not fts_columns:
                 raise TableSyncError("FTS5 table requires at least one TEXT field.")
-            
+
             columns_clause = ", ".join(fts_columns)
-            query = f"CREATE VIRTUAL TABLE IF NOT EXISTS {self.table_name} USING fts5({columns_clause})"
+            query = (
+                f"CREATE VIRTUAL TABLE IF NOT EXISTS {self.table_name} USING fts5({columns_clause})"
+            )
         else:
             # Standard table creation
             column_defs = []
@@ -113,7 +141,7 @@ class TableSync:
 
     def table_exists(self) -> bool:
         """Check if the table exists in the database."""
-        query = f"SELECT name FROM sqlite_master WHERE type='table' AND name=?"
+        query = "SELECT name FROM sqlite_master WHERE type='table' AND name=?"
         with get_connection(self.db_path) as conn:
             cursor = conn.execute(query, (self.table_name,))
             return cursor.fetchone() is not None
@@ -220,7 +248,7 @@ class AsyncTableSync:
 
         fields_clause = ", ".join(column_defs)
         query = f"CREATE TABLE IF NOT EXISTS {self.table_name} ({fields_clause})"
-        
+
         conn = await get_async_connection(self.db_path)
         try:
             await conn.execute(query)
@@ -262,7 +290,7 @@ class AsyncTableSync:
 
     async def table_exists_async(self) -> bool:
         """Check if the table exists in the database (async)."""
-        query = f"SELECT name FROM sqlite_master WHERE type='table' AND name=?"
+        query = "SELECT name FROM sqlite_master WHERE type='table' AND name=?"
         conn = await get_async_connection(self.db_path)
         try:
             cursor = await conn.execute(query, (self.table_name,))
