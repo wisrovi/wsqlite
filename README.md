@@ -29,6 +29,8 @@
 
 ## 🌟 Key Features
 
+- **🕵️ Enterprise Forensic Automation** - Ghost table (`_forensic_audit_log`) audit trail for all data mutations (`INSERT`, `UPDATE`, `DELETE`).
+- **🗂️ Multi-Table Manager & Registry** - Multi-model registration with dictionary indexing `app[User]` and dynamic attribute dispatch `app.user`.
 - **🔗 Pydantic Integration** - Define your database schema using standard Pydantic v2 models.
 - **🔄 Auto Schema Sync** - Tables are created and synchronized automatically when your models change.
 - **⚡ Connection Pooling** - High-performance, thread-safe connection pool with WAL mode enabled by default.
@@ -39,7 +41,15 @@
 - **⚡ Async Ready** - Full `async/await` support for high-performance applications.
 - **🔨 Query Builders** - Safe, fluent API for complex queries with JOINs, GROUP BY, and more.
 - **🔄 Versioned Migrations** - Robust system for schema versioning and upgrades/rollbacks.
-- **🧪 Battle Tested** - 300+ tests and built-in stress testing/benchmarking tools.
+
+## 🛠️ Key Technologies & Libraries Used
+
+- **Python 3.9+** - Primary programming language
+- **Pydantic v2** - Modern schema definition and data validation
+- **sqlite3 & aiosqlite** - SQLite connectors for synchronous and asynchronous execution
+- **loguru** - High-performance structured logging framework
+- **click** - Command-line interface builder
+- **pytest & pytest-cov** - Automated unit testing and coverage evaluation
 
 ## 🤔 Why wsqlite?
 
@@ -118,14 +128,14 @@ async def main():
 class Employee(BaseModel):
     # Auto-incrementing Primary Key
     id: Optional[int] = Field(None, description="primary autoincrement")
-    
+
     # Required and Unique
     employee_code: str = Field(..., description="unique not null")
-    
+
     # Composite Unique (unique together: department + position)
     department: str = Field(..., description="unique:job_role")
     position: str = Field(..., description="unique:job_role")
-    
+
     # Foreign Key
     office_id: int = Field(..., description="references:office.id")
 ```
