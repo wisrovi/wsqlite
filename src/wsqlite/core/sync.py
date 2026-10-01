@@ -58,7 +58,21 @@ class TableSync:
 
         if not self.model:
             return
+
+        # Check if model is a Database View defined via @view
+        view_query = getattr(self.model, "__view_query__", None)
+        if view_query:
+            view_name = getattr(
+                self.model, "__view_name__", self.table_name
+            )
+            query = f"CREATE VIEW IF NOT EXISTS {view_name} AS {view_query}"
+            with get_connection(self.db_path) as conn:
+                conn.execute(query)
+                conn.commit()
+            return
+
         config = getattr(self.model, "wsqlite_config", None)
+
         use_fts = getattr(config, "use_fts5", False)
 
         if use_fts:
@@ -118,8 +132,12 @@ class TableSync:
 
     def sync_with_model(self):
         """Sync the table with the Pydantic model, adding new columns if necessary."""
+        if getattr(self.model, "__view_query__", None):
+            return
+
         # FTS5 tables cannot be altered
         config = getattr(self.model, "wsqlite_config", None)
+
         if getattr(config, "use_fts5", False):
             return
 
