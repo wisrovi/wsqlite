@@ -1,4 +1,5 @@
 import os
+
 from pydantic import BaseModel
 from wsqlite import WSQLite
 
@@ -16,6 +17,8 @@ class User(BaseModel):
 
 db = WSQLite(User, DB_PATH)
 
+print(f"Connected to database file at: {db.db_path}")
+assert db.db_path == DB_PATH, f"Expected db_path to be {DB_PATH}, got {db.db_path}"
 print("=== CREATE ===")
 db.insert(User(id=1, name="Alice", email="alice@example.com"))
 db.insert(User(id=2, name="Bob", email="bob@example.com"))
