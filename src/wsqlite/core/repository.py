@@ -187,7 +187,10 @@ class WSQLite:
         if name_lower in repositories:
             return repositories[name_lower]
 
-        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+        try:
+            return object.__getattribute__(self, name)
+        except AttributeError:
+            raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
 
     def _call_hook(self, instance: Any, hook_name: str, *args, **kwargs) -> None:
         """Call a hook method on the model instance if it exists."""
