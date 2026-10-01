@@ -5,7 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-10-01
+
+### Added
+- **Database Views (`@view`)**: Declarative definition of SQLite views using the `@view(name=..., depends_on=..., query=...)` decorator with read-only ORM querying.
+- **Topological View Dependency Resolution**: `depends_on=[...]` ensures parent tables are initialized before views are created.
+- **Read-Only Protection**: Enforced `OperationError` on any direct mutation/insert attempt on Database Views.
+
 ## [1.2.4] - 2026-05-12
+
 
 ### Fixed
 - **Packaging**: Corrected `setup.py` to properly include the `wsqlite` package from the `src` directory. This resolves the `ModuleNotFoundError` when installing from PyPI.
