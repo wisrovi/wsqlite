@@ -44,20 +44,23 @@ from wsqlite.core.pool import (
 )
 from wsqlite.core.repository import ForensicModel, WSQLite as WSQLiteImpl
 from wsqlite.core.sync import AsyncTableSync, TableSync
+from wsqlite.views import view
 
-__version__ = "1.3.0"
+__version__ = "1.4.0"
 
 WSQLite = WSQLiteImpl
 
 __all__ = [
     "WSQLite",
     "ForensicModel",
+    "view",
     "QueryBuilder",
     "Transaction",
     "AsyncTransaction",
     "get_connection",
     "get_async_connection",
     "get_transaction",
+
     "get_async_transaction",
     "retry_on_lock",
     "TableSync",
