@@ -46,7 +46,7 @@ from wsqlite.core.repository import ForensicModel, WSQLite as WSQLiteImpl
 from wsqlite.core.sync import AsyncTableSync, TableSync
 from wsqlite.views import view
 
-__version__ = "1.4.0"
+__version__ = "1.5.0"
 
 WSQLite = WSQLiteImpl
 
