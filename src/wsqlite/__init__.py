@@ -44,6 +44,7 @@ from wsqlite.core.pool import (
 )
 from wsqlite.core.repository import ForensicModel, WSQLite as WSQLiteImpl
 from wsqlite.core.sync import AsyncTableSync, TableSync
+from wsqlite.models import AuditMixin, SoftDeleteMixin, TimestampMixin
 from wsqlite.views import view
 
 __version__ = "1.5.0"
@@ -53,6 +54,9 @@ WSQLite = WSQLiteImpl
 __all__ = [
     "WSQLite",
     "ForensicModel",
+    "AuditMixin",
+    "SoftDeleteMixin",
+    "TimestampMixin",
     "view",
     "QueryBuilder",
     "Transaction",

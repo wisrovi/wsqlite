@@ -116,7 +116,7 @@ class TableSync:
                 column_defs.append(f"FOREIGN KEY({local_col}) REFERENCES {ref_table}({ref_col})")
 
             fields_clause = ", ".join(column_defs)
-            query = f"CREATE TABLE IF NOT EXISTS {self.table_name} ({fields_clause})"
+            query = f'CREATE TABLE IF NOT EXISTS "{self.table_name}" ({fields_clause})'
 
         with get_connection(self.db_path) as conn:
             conn.execute(query)
@@ -141,7 +141,7 @@ class TableSync:
         if getattr(config, "use_fts5", False):
             return
 
-        query = f"PRAGMA table_info({self.table_name})"
+        query = f'PRAGMA table_info("{self.table_name}")'
         with get_connection(self.db_path) as conn:
             cursor = conn.execute(query)
             existing_columns = {row[1] for row in cursor.fetchall()}
@@ -153,7 +153,7 @@ class TableSync:
             with get_connection(self.db_path) as conn:
                 for field in new_fields:
                     field_type = get_sql_type(self.model.model_fields[field])
-                    alter_query = f"ALTER TABLE {self.table_name} ADD COLUMN {field} {field_type}"
+                    alter_query = f'ALTER TABLE "{self.table_name}" ADD COLUMN {field} {field_type}'
                     conn.execute(alter_query)
                 conn.commit()
 
