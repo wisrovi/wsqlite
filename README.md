@@ -30,7 +30,9 @@
 ## 🌟 Key Features
 
 - **🕵️ Enterprise Forensic Automation** - Ghost table (`_forensic_audit_log`) audit trail for all data mutations (`INSERT`, `UPDATE`, `DELETE`).
+- **👁️ Database Views (`@view`)** - Declarative SQLite View definition with topological `depends_on=[...]` DDL ordering and read-only ORM querying.
 - **🗂️ Multi-Table Manager & Registry** - Multi-model registration with dictionary indexing `app[User]` and dynamic attribute dispatch `app.user`.
+
 - **🔗 Pydantic Integration** - Define your database schema using standard Pydantic v2 models.
 - **🔄 Auto Schema Sync** - Tables are created and synchronized automatically when your models change.
 - **⚡ Connection Pooling** - High-performance, thread-safe connection pool with WAL mode enabled by default.
