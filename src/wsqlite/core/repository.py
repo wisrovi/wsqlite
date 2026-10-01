@@ -111,7 +111,8 @@ class WSQLite:
         elif resolved_model is not None:
             self.is_multi_table = False
             self.model = resolved_model
-            self.table_name = table_name or getattr(resolved_model, "__tablename__", resolved_model.__name__.lower())
+            self.table_name = table_name or getattr(resolved_model, "__view_name__", getattr(resolved_model, "__tablename__", resolved_model.__name__.lower()))
+
 
             if forensic is None:
                 self.forensic = (
@@ -255,7 +256,13 @@ class WSQLite:
 
     def insert(self, data: BaseModel) -> None:
         """Insert a new record into the database."""
+        if getattr(self.model, "__view_query__", None):
+            from wsqlite.exceptions import OperationError
+
+            raise OperationError("Database Views are read-only and do not support insert operations.")
+
         self._call_hook(data, "pre_save")
+
 
         data_dict = self._dump(data)
         fields = ", ".join(data_dict.keys())
