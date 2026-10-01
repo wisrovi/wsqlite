@@ -47,7 +47,7 @@ from wsqlite.core.sync import AsyncTableSync, TableSync
 from wsqlite.models import AuditMixin, SoftDeleteMixin, TimestampMixin
 from wsqlite.views import view
 
-__version__ = "1.5.0"
+__version__ = "1.5.1"
 
 WSQLite = WSQLiteImpl
 
